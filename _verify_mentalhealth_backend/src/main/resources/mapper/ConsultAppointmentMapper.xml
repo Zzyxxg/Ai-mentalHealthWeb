@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mentalhealth.mapper.ConsultAppointmentMapper">
+
+    <resultMap id="AppointmentResultMap" type="com.example.mentalhealth.entity.ConsultAppointment">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="counselor_user_id" property="counselorUserId"/>
+        <result column="start_time" property="startTime"/>
+        <result column="duration_minutes" property="durationMinutes"/>
+        <result column="status" property="status" typeHandler="com.example.mentalhealth.mapper.typehandler.AppointmentStatusTypeHandler"/>
+        <result column="note" property="note"/>
+        <result column="idempotency_key" property="idempotencyKey"/>
+        <result column="deleted" property="deleted"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="AppointmentColumns">
+        id, user_id, counselor_user_id, start_time, duration_minutes, status, note, idempotency_key, deleted, create_time, update_time
+    </sql>
+
+    <select id="selectById" resultMap="AppointmentResultMap">
+        SELECT <include refid="AppointmentColumns"/>
+        FROM consult_appointment
+        WHERE id = #{id} AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectByUserAndIdempotencyKey" resultMap="AppointmentResultMap">
+        SELECT <include refid="AppointmentColumns"/>
+        FROM consult_appointment
+        WHERE user_id = #{userId} AND idempotency_key = #{idempotencyKey} AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectByUser" resultMap="AppointmentResultMap">
+        SELECT <include refid="AppointmentColumns"/>
+        FROM consult_appointment
+        <where>
+            user_id = #{userId}
+            AND deleted = 0
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO consult_appointment (user_id, counselor_user_id, start_time, duration_minutes, status, note, idempotency_key, deleted)
+        VALUES (#{userId}, #{counselorUserId}, #{startTime}, #{durationMinutes},
+        #{status, typeHandler=com.example.mentalhealth.mapper.typehandler.AppointmentStatusTypeHandler},
+        #{note}, #{idempotencyKey}, 0)
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE consult_appointment
+        SET status = #{status}, update_time = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id} AND user_id = #{userId} AND deleted = 0
+    </update>
+</mapper>
