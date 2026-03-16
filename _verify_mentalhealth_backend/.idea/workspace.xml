@@ -4,7 +4,28 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="143d5bc8-8799-414d-9265-b58619d6f377" name="Changes" comment="上传" />
+    <list default="true" id="143d5bc8-8799-414d-9265-b58619d6f377" name="Changes" comment="上传">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/controller/ConsultController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/controller/ConsultController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/dto/req/ConsultAppointmentCreateReq.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/dto/req/ConsultAppointmentCreateReq.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/dto/resp/ConsultAppointmentResp.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/dto/resp/ConsultAppointmentResp.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/security/UserPrincipal.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/security/UserPrincipal.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/ConsultService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/ConsultService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/impl/ConsultServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/impl/ConsultServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/controller/AuthController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/controller/AuthController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/controller/ConsultController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/controller/ConsultController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/dto/req/ConsultAppointmentCreateReq.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/dto/req/ConsultAppointmentCreateReq.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/dto/resp/ConsultAppointmentResp.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/dto/resp/ConsultAppointmentResp.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/security/JwtAuthenticationFilter.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/security/JwtAuthenticationFilter.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/security/UserPrincipal.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/security/UserPrincipal.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/ConsultService.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/ConsultService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/impl/ConsultServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/impl/ConsultServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/router/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/router/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/services/consult.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/services/consult.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/layouts/StudentLayout.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/layouts/StudentLayout.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/pages/LoginPage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/pages/LoginPage.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/pages/student/StudentHome.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/pages/student/StudentHome.vue" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -34,13 +55,13 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "last_opened_file_path": "/Users/zhangzeyu/ai_completion/trace/Ai-mentalHealthWeb/_verify_mentalhealth_backend"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/zhangzeyu/ai_completion/trace/Ai-mentalHealthWeb/_verify_mentalhealth_backend&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="MentalHealthApplication" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="com.example.mentalhealth.MentalHealthApplication" />

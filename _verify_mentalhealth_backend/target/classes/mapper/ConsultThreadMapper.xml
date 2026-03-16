@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mentalhealth.mapper.ConsultThreadMapper">
+
+    <resultMap id="ThreadResultMap" type="com.example.mentalhealth.entity.ConsultThread">
+        <id column="id" property="id"/>
+        <result column="student_user_id" property="studentUserId"/>
+        <result column="counselor_user_id" property="counselorUserId"/>
+        <result column="status" property="status"/>
+        <result column="topic" property="topic"/>
+        <result column="hidden" property="hidden"/>
+        <result column="hidden_reason" property="hiddenReason"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="ThreadColumns">
+        id, student_user_id, counselor_user_id, status, topic, hidden, hidden_reason, create_time, update_time
+    </sql>
+
+    <select id="selectById" resultMap="ThreadResultMap">
+        SELECT <include refid="ThreadColumns"/>
+        FROM consult_thread
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByStudent" resultMap="ThreadResultMap">
+        SELECT <include refid="ThreadColumns"/>
+        FROM consult_thread
+        WHERE student_user_id = #{studentUserId}
+        ORDER BY update_time DESC
+    </select>
+
+    <select id="selectByCounselor" resultMap="ThreadResultMap">
+        SELECT <include refid="ThreadColumns"/>
+        FROM consult_thread
+        <where>
+            counselor_user_id = #{counselorUserId}
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY update_time DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO consult_thread (student_user_id, counselor_user_id, status, topic, hidden, hidden_reason)
+        VALUES (#{studentUserId}, #{counselorUserId}, #{status}, #{topic}, #{hidden}, #{hiddenReason})
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE consult_thread
+        SET status = #{status}, update_time = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateHidden">
+        UPDATE consult_thread
+        SET hidden = #{hidden}, hidden_reason = #{hiddenReason}, update_time = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+    </update>
+</mapper>

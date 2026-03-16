@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { listConsultants, createAppointment, type Counselor } from '../../../services/consult'
+import { useRouter } from 'vue-router'
+import { listConsultants, createAppointment, createConsultThread, type Counselor } from '../../../services/consult'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 
+const router = useRouter()
 const loading = ref(false)
 const consultants = ref<Counselor[]>([])
 const keyword = ref('')
@@ -18,6 +20,15 @@ const bookingForm = ref({
 })
 const selectedConsultant = ref<Counselor | null>(null)
 const submitting = ref(false)
+
+// 咨询相关
+const consultDialogVisible = ref(false)
+const consultForm = ref({
+  counselorUserId: 0,
+  topic: '',
+  content: ''
+})
+const submittingConsult = ref(false)
 
 async function fetchConsultants() {
   loading.value = true
@@ -71,6 +82,43 @@ async function handleBooking() {
   }
 }
 
+function openConsultDialog(c: Counselor) {
+  selectedConsultant.value = c
+  consultForm.value = {
+    counselorUserId: c.userId,
+    topic: '',
+    content: ''
+  }
+  consultDialogVisible.value = true
+}
+
+async function handleConsult() {
+  if (!consultForm.value.topic.trim()) {
+    ElMessage.warning('请输入咨询主题')
+    return
+  }
+  if (!consultForm.value.content.trim()) {
+    ElMessage.warning('请输入咨询内容')
+    return
+  }
+  
+  submittingConsult.value = true
+  try {
+    const res = await createConsultThread(consultForm.value)
+    if (res.code === 0) {
+      ElMessage.success('咨询发起成功！')
+      consultDialogVisible.value = false
+      router.push({ name: 'student-consultation-detail', params: { id: res.data.id } })
+    } else {
+      ElMessage.error(res.msg || '发起咨询失败')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '网络错误')
+  } finally {
+    submittingConsult.value = false
+  }
+}
+
 onMounted(() => {
   fetchConsultants()
 })
@@ -118,10 +166,39 @@ onMounted(() => {
         </div>
         <div class="intro">{{ c.intro }}</div>
         <div class="actions">
+          <el-button type="success" plain size="small" @click="openConsultDialog(c)">发起咨询</el-button>
           <el-button type="primary" plain size="small" @click="openBookingDialog(c)">预约咨询</el-button>
         </div>
       </el-card>
     </div>
+
+    <!-- 咨询弹窗 -->
+    <el-dialog
+      v-model="consultDialogVisible"
+      :title="`发起咨询 - ${selectedConsultant?.realName}`"
+      width="500px"
+      destroy-on-close
+    >
+      <el-form :model="consultForm" label-position="top">
+        <el-form-item label="咨询主题" required>
+          <el-input v-model="consultForm.topic" placeholder="请输入咨询主题" />
+        </el-form-item>
+        <el-form-item label="咨询内容" required>
+          <el-input
+            v-model="consultForm.content"
+            type="textarea"
+            placeholder="请详细描述您的问题..."
+            :rows="5"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="consultDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="submittingConsult" @click="handleConsult">发送咨询</el-button>
+        </div>
+      </template>
+    </el-dialog>
 
     <!-- 预约弹窗 -->
     <el-dialog

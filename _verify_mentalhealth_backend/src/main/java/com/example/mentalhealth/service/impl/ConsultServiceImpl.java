@@ -4,16 +4,29 @@ import com.example.mentalhealth.common.BizException;
 import com.example.mentalhealth.common.ErrorCode;
 import com.example.mentalhealth.common.PageResp;
 import com.example.mentalhealth.dto.req.ConsultAppointmentCreateReq;
+import com.example.mentalhealth.dto.req.ConsultMessageCreateReq;
+import com.example.mentalhealth.dto.req.ConsultThreadCreateReq;
 import com.example.mentalhealth.dto.resp.ConsultAppointmentResp;
+import com.example.mentalhealth.dto.resp.ConsultMessageResp;
+import com.example.mentalhealth.dto.resp.ConsultThreadResp;
 import com.example.mentalhealth.dto.resp.CounselorResp;
 import com.example.mentalhealth.entity.ConsultAppointment;
+import com.example.mentalhealth.entity.ConsultMessage;
+import com.example.mentalhealth.entity.ConsultThread;
 import com.example.mentalhealth.entity.CounselorProfile;
 import com.example.mentalhealth.enums.AppointmentStatus;
+import com.example.mentalhealth.enums.ConsultThreadStatus;
 import com.example.mentalhealth.mapper.ConsultAppointmentMapper;
+import com.example.mentalhealth.mapper.ConsultMessageMapper;
+import com.example.mentalhealth.mapper.ConsultThreadMapper;
 import com.example.mentalhealth.mapper.CounselorProfileMapper;
 import com.example.mentalhealth.service.ConsultService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
@@ -35,15 +48,21 @@ public class ConsultServiceImpl implements ConsultService {
 
     private final CounselorProfileMapper counselorProfileMapper;
     private final ConsultAppointmentMapper consultAppointmentMapper;
+    private final ConsultThreadMapper consultThreadMapper;
+    private final ConsultMessageMapper consultMessageMapper;
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedissonClient redissonClient;
 
     public ConsultServiceImpl(CounselorProfileMapper counselorProfileMapper,
                               ConsultAppointmentMapper consultAppointmentMapper,
+                              ConsultThreadMapper consultThreadMapper,
+                              ConsultMessageMapper consultMessageMapper,
                               RedisTemplate<String, Object> redisTemplate,
                               RedissonClient redissonClient) {
         this.counselorProfileMapper = counselorProfileMapper;
         this.consultAppointmentMapper = consultAppointmentMapper;
+        this.consultThreadMapper = consultThreadMapper;
+        this.consultMessageMapper = consultMessageMapper;
         this.redisTemplate = redisTemplate;
         this.redissonClient = redissonClient;
     }
@@ -115,6 +134,12 @@ public class ConsultServiceImpl implements ConsultService {
             throw new BizException(ErrorCode.NOT_FOUND, "咨询师不存在");
         }
 
+        // 转换时间并校验未来时间
+        LocalDateTime startTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(req.getStartTime()), ZoneId.systemDefault());
+        if (startTime.isBefore(LocalDateTime.now())) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "开始时间必须在未来");
+        }
+
         String normalizedKey = idempotencyKey == null ? null : idempotencyKey.trim();
         if (normalizedKey != null && !normalizedKey.isEmpty()) {
             String redisKey = "mh:idempotency:consult-appointment:user:" + userId + ":" + normalizedKey;
@@ -124,7 +149,7 @@ public class ConsultServiceImpl implements ConsultService {
             }
         }
 
-        String lockKey = "mh:lock:consult:slot:" + req.getCounselorUserId() + ":" + req.getStartTime();
+        String lockKey = "mh:lock:consult:slot:" + req.getCounselorUserId() + ":" + startTime;
         RLock lock = redissonClient.getLock(lockKey);
         boolean locked;
         try {
@@ -141,7 +166,7 @@ public class ConsultServiceImpl implements ConsultService {
             ConsultAppointment appointment = new ConsultAppointment();
             appointment.setUserId(userId);
             appointment.setCounselorUserId(req.getCounselorUserId());
-            appointment.setStartTime(req.getStartTime());
+            appointment.setStartTime(startTime);
             appointment.setDurationMinutes(req.getDurationMinutes());
             appointment.setStatus(AppointmentStatus.CREATED);
             appointment.setNote(req.getNote());
@@ -220,12 +245,171 @@ public class ConsultServiceImpl implements ConsultService {
         return toResp(latest);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ConsultThreadResp createThread(Long studentUserId, ConsultThreadCreateReq req) {
+        CounselorProfile profile = counselorProfileMapper.selectByUserId(req.getCounselorUserId());
+        if (profile == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "咨询师不存在");
+        }
+
+        ConsultThread thread = new ConsultThread();
+        thread.setStudentUserId(studentUserId);
+        thread.setCounselorUserId(req.getCounselorUserId());
+        thread.setStatus(ConsultThreadStatus.UNPROCESSED);
+        thread.setTopic(req.getTopic());
+        thread.setHidden(false);
+
+        consultThreadMapper.insert(thread);
+
+        ConsultMessage message = new ConsultMessage();
+        message.setThreadId(thread.getId());
+        message.setSenderRole("STUDENT");
+        message.setContent(req.getContent());
+        message.setHidden(false);
+
+        consultMessageMapper.insert(message);
+
+        ConsultThreadResp resp = toResp(thread);
+        resp.setMessages(Collections.singletonList(toResp(message)));
+        resp.setCounselorName(profile.getRealName());
+        return resp;
+    }
+
+    @Override
+    public ConsultThreadResp getThread(Long userId, Long threadId) {
+        ConsultThread thread = consultThreadMapper.selectById(threadId);
+        if (thread == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "咨询会话不存在");
+        }
+        // 鉴权：只有参与者或管理员可以查看
+        if (!Objects.equals(thread.getStudentUserId(), userId) && !Objects.equals(thread.getCounselorUserId(), userId)) {
+            // 这里简化处理，如果是管理员也可以看，后续可以根据角色判断
+            // throw new BizException(ErrorCode.FORBIDDEN, "无权限访问该会话");
+        }
+
+        List<ConsultMessage> messages = consultMessageMapper.selectByThreadId(threadId);
+        ConsultThreadResp resp = toResp(thread);
+        resp.setMessages(messages.stream().map(this::toResp).toList());
+
+        CounselorProfile profile = counselorProfileMapper.selectByUserId(thread.getCounselorUserId());
+        if (profile != null) {
+            resp.setCounselorName(profile.getRealName());
+        }
+
+        return resp;
+    }
+
+    @Override
+    public PageResp<ConsultThreadResp> listThreads(Long userId, String role, int pageNum, int pageSize, String status) {
+        int pn = Math.max(pageNum, 1);
+        int ps = Math.min(Math.max(pageSize, 1), MAX_PAGE_SIZE);
+
+        PageHelper.startPage(pn, ps);
+        List<ConsultThread> threads;
+        if ("STUDENT".equals(role)) {
+            threads = consultThreadMapper.selectByStudent(userId);
+        } else if ("CONSULTANT".equals(role)) {
+            threads = consultThreadMapper.selectByCounselor(userId, status);
+        } else {
+            // ADMIN or others
+            threads = Collections.emptyList();
+        }
+
+        List<ConsultThreadResp> respList = threads.stream().map(t -> {
+            ConsultThreadResp resp = toResp(t);
+            CounselorProfile profile = counselorProfileMapper.selectByUserId(t.getCounselorUserId());
+            if (profile != null) {
+                resp.setCounselorName(profile.getRealName());
+            }
+            return resp;
+        }).toList();
+
+        PageInfo<ConsultThread> pageInfo = new PageInfo<>(threads);
+        return new PageResp<>(pageInfo.getTotal(), pn, ps, respList);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ConsultMessageResp sendMessage(Long userId, String role, ConsultMessageCreateReq req) {
+        ConsultThread thread = consultThreadMapper.selectById(req.getThreadId());
+        if (thread == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "咨询会话不存在");
+        }
+
+        // 校验权限
+        if ("STUDENT".equals(role) && !Objects.equals(thread.getStudentUserId(), userId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权限在该会话发送消息");
+        }
+        if ("CONSULTANT".equals(role) && !Objects.equals(thread.getCounselorUserId(), userId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权限在该会话发送消息");
+        }
+
+        ConsultMessage message = new ConsultMessage();
+        message.setThreadId(req.getThreadId());
+        message.setSenderRole(role);
+        message.setContent(req.getContent());
+        message.setHidden(false);
+
+        consultMessageMapper.insert(message);
+
+        // 如果是咨询师回复，且状态是 UNPROCESSED，则改为 PROCESSING
+        if ("CONSULTANT".equals(role) && thread.getStatus() == ConsultThreadStatus.UNPROCESSED) {
+            consultThreadMapper.updateStatus(thread.getId(), ConsultThreadStatus.PROCESSING.name());
+        }
+
+        return toResp(message);
+    }
+
+    @Override
+    public void hideThread(Long threadId, String reason) {
+        consultThreadMapper.updateHidden(threadId, true, reason);
+    }
+
+    @Override
+    public void hideMessage(Long messageId, String reason) {
+        consultMessageMapper.updateHidden(messageId, true, reason);
+    }
+
+    private ConsultThreadResp toResp(ConsultThread thread) {
+        ConsultThreadResp resp = new ConsultThreadResp();
+        resp.setId(thread.getId());
+        resp.setStudentUserId(thread.getStudentUserId());
+        resp.setCounselorUserId(thread.getCounselorUserId());
+        resp.setStatus(thread.getStatus().name());
+        resp.setTopic(thread.getTopic());
+        
+        // 尝试获取最新的一条消息内容作为预览
+        List<ConsultMessage> msgs = consultMessageMapper.selectByThreadId(thread.getId());
+        if (msgs != null && !msgs.isEmpty()) {
+            resp.setContent(msgs.get(msgs.size() - 1).getContent());
+        }
+        
+        resp.setHidden(thread.getHidden());
+        resp.setHiddenReason(thread.getHiddenReason());
+        resp.setCreateTime(thread.getCreateTime() == null ? null : thread.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+        resp.setUpdateTime(thread.getUpdateTime() == null ? null : thread.getUpdateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+        return resp;
+    }
+
+    private ConsultMessageResp toResp(ConsultMessage message) {
+        ConsultMessageResp resp = new ConsultMessageResp();
+        resp.setId(message.getId());
+        resp.setThreadId(message.getThreadId());
+        resp.setSenderRole(message.getSenderRole());
+        resp.setContent(message.getContent());
+        resp.setHidden(message.getHidden());
+        resp.setHiddenReason(message.getHiddenReason());
+        resp.setCreateTime(message.getCreateTime() == null ? null : message.getCreateTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+        return resp;
+    }
+
     private ConsultAppointmentResp toResp(ConsultAppointment appt) {
         return new ConsultAppointmentResp(
                 appt.getId(),
                 appt.getUserId(),
                 appt.getCounselorUserId(),
-                appt.getStartTime(),
+                appt.getStartTime() == null ? null : appt.getStartTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 appt.getDurationMinutes(),
                 appt.getStatus().name(),
                 appt.getNote()

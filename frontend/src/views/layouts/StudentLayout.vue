@@ -17,6 +17,7 @@ async function onLogout() {
       <el-menu router :default-active="$route.path" class="menu">
         <el-menu-item index="/student">寻找咨询师</el-menu-item>
         <el-menu-item index="/student/appointments">我的预约</el-menu-item>
+        <el-menu-item index="/student/consultations">我的咨询</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

@@ -6,7 +6,11 @@ import com.example.mentalhealth.common.Result;
 import com.example.mentalhealth.config.TraceIdFilter;
 import com.example.mentalhealth.dto.req.ConsultAppointmentCreateReq;
 import com.example.mentalhealth.dto.req.ConsultAppointmentPatchReq;
+import com.example.mentalhealth.dto.req.ConsultMessageCreateReq;
+import com.example.mentalhealth.dto.req.ConsultThreadCreateReq;
 import com.example.mentalhealth.dto.resp.ConsultAppointmentResp;
+import com.example.mentalhealth.dto.resp.ConsultMessageResp;
+import com.example.mentalhealth.dto.resp.ConsultThreadResp;
 import com.example.mentalhealth.dto.resp.CounselorResp;
 import com.example.mentalhealth.security.UserPrincipal;
 import com.example.mentalhealth.service.ConsultService;
@@ -19,8 +23,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -111,5 +117,64 @@ public class ConsultController {
         }
         ConsultAppointmentResp resp = consultService.cancelAppointment(principal.getUserId(), appointmentId);
         return ResponseEntity.ok(Result.success(resp, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "发起咨询会话")
+    @ApiResponse(responseCode = "201", description = "创建成功")
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/consult-threads")
+    public ResponseEntity<Result<ConsultThreadResp>> createThread(Authentication authentication, @Valid @RequestBody ConsultThreadCreateReq req) {
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        ConsultThreadResp resp = consultService.createThread(principal.getUserId(), req);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Result.success(resp, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "获取咨询会话列表")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @GetMapping("/consult-threads")
+    public ResponseEntity<Result<PageResp<ConsultThreadResp>>> listThreads(
+            Authentication authentication,
+            @RequestParam(value = "pageNum", defaultValue = "1") @Min(1) int pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") @Min(1) @Max(100) int pageSize,
+            @RequestParam(value = "status", required = false) String status) {
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        PageResp<ConsultThreadResp> page = consultService.listThreads(principal.getUserId(), principal.getRole(), pageNum, pageSize, status);
+        return ResponseEntity.ok(Result.success(page, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "获取咨询会话详情")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @GetMapping("/consult-threads/{threadId}")
+    public ResponseEntity<Result<ConsultThreadResp>> getThread(Authentication authentication, @PathVariable("threadId") Long threadId) {
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        ConsultThreadResp resp = consultService.getThread(principal.getUserId(), threadId);
+        return ResponseEntity.ok(Result.success(resp, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "发送咨询消息")
+    @ApiResponse(responseCode = "201", description = "发送成功")
+    @PostMapping("/consult-messages")
+    public ResponseEntity<Result<ConsultMessageResp>> sendMessage(Authentication authentication, @Valid @RequestBody ConsultMessageCreateReq req) {
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        ConsultMessageResp resp = consultService.sendMessage(principal.getUserId(), principal.getRole(), req);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Result.success(resp, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "下架咨询会话")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/consult-threads/{threadId}/hide")
+    public ResponseEntity<Result<Void>> hideThread(@PathVariable("threadId") Long threadId, @RequestBody Map<String, String> body) {
+        consultService.hideThread(threadId, body.get("reason"));
+        return ResponseEntity.ok(Result.success(null, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "下架咨询消息")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/consult-messages/{messageId}/hide")
+    public ResponseEntity<Result<Void>> hideMessage(@PathVariable("messageId") Long messageId, @RequestBody Map<String, String> body) {
+        consultService.hideMessage(messageId, body.get("reason"));
+        return ResponseEntity.ok(Result.success(null, TraceIdFilter.currentTraceId()));
     }
 }

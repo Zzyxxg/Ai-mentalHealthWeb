@@ -31,6 +31,8 @@ export const router = createRouter({
       children: [
         { path: '', name: 'student-home', component: () => import('../views/pages/student/StudentHome.vue') },
         { path: 'appointments', name: 'student-appointments', component: () => import('../views/pages/student/MyAppointments.vue') },
+        { path: 'consultations', name: 'student-consultations', component: () => import('../views/pages/student/ConsultationList.vue') },
+        { path: 'consultations/:id', name: 'student-consultation-detail', component: () => import('../views/pages/student/ConsultationDetail.vue') },
       ],
     },
     {
@@ -54,15 +56,24 @@ router.beforeEach((to) => {
   const isAuthed = authStore.isAuthed
   const role = authStore.role
 
+  // 调试日志：排查“无权限”问题
+  console.log('[Router Guard] Navigating to:', to.path, '| role:', role, '| isAuthed:', isAuthed)
+
   if (to.path === '/login' && isAuthed) return homePathByRole(role)
 
   const requiresAuth = Boolean(to.meta.auth)
   if (requiresAuth && !isAuthed) {
+    console.warn('[Router Guard] Unauthorized access to:', to.path, ', redirecting to login')
     return { path: '/login', query: { redirect: to.fullPath } }
   }
 
   const allowedRoles = (to.meta.roles as UserRole[] | undefined) ?? undefined
-  if (allowedRoles && (!role || !allowedRoles.includes(role as UserRole))) return '/403'
+  if (allowedRoles) {
+    if (!role || !allowedRoles.includes(role as UserRole)) {
+      console.error('[Router Guard] Forbidden! User role:', role, 'not allowed for:', to.path, '(Allowed:', allowedRoles, ')')
+      return '/403'
+    }
+  }
 
   return true
 })

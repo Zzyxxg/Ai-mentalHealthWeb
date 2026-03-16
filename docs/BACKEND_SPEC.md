@@ -52,6 +52,7 @@
 - UNAVAILABLE：不可用
 
 ### 3.3 预约状态（appointment_status）
+- CREATED：已提交（初始状态）
 - CONFIRMED：已确认
 - CANCELED：已取消
 - COMPLETED：已完成
@@ -95,6 +96,7 @@
 - id
 - studentUserId
 - counselorUserId
+- counselorName（冗余字段，方便前端展示）
 - status（UNPROCESSED/PROCESSING/CLOSED）
 - topic
 - hidden（0/1）

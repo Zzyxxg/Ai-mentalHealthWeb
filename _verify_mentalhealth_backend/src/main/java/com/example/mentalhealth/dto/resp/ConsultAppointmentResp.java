@@ -1,18 +1,16 @@
 package com.example.mentalhealth.dto.resp;
 
-import java.time.LocalDateTime;
-
 public class ConsultAppointmentResp {
 
     private Long id;
     private Long userId;
     private Long counselorUserId;
-    private LocalDateTime startTime;
+    private Long startTime;
     private Integer durationMinutes;
     private String status;
     private String note;
 
-    public ConsultAppointmentResp(Long id, Long userId, Long counselorUserId, LocalDateTime startTime, Integer durationMinutes, String status, String note) {
+    public ConsultAppointmentResp(Long id, Long userId, Long counselorUserId, Long startTime, Integer durationMinutes, String status, String note) {
         this.id = id;
         this.userId = userId;
         this.counselorUserId = counselorUserId;
@@ -46,11 +44,11 @@ public class ConsultAppointmentResp {
         this.counselorUserId = counselorUserId;
     }
 
-    public LocalDateTime getStartTime() {
+    public Long getStartTime() {
         return startTime;
     }
 
-    public void setStartTime(LocalDateTime startTime) {
+    public void setStartTime(Long startTime) {
         this.startTime = startTime;
     }
 
