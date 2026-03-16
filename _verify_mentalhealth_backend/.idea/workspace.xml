@@ -4,17 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="143d5bc8-8799-414d-9265-b58619d6f377" name="Changes" comment="上传">
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/config/RedisConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/config/RedisConfig.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/impl/ConsultServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/impl/ConsultServiceImpl.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/config/RedisConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/config/RedisConfig.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/impl/ConsultServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/impl/ConsultServiceImpl.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../frontend/src/router/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/router/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../frontend/src/services/consult.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/services/consult.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../frontend/src/views/layouts/StudentLayout.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/layouts/StudentLayout.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../frontend/src/views/pages/student/StudentHome.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/pages/student/StudentHome.vue" afterDir="false" />
-    </list>
+    <list default="true" id="143d5bc8-8799-414d-9265-b58619d6f377" name="Changes" comment="上传" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

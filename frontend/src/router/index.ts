@@ -28,7 +28,10 @@ export const router = createRouter({
       path: '/student',
       component: StudentLayout,
       meta: { auth: true, roles: ['STUDENT'] },
-      children: [{ path: '', name: 'student-home', component: () => import('../views/pages/student/StudentHome.vue') }],
+      children: [
+        { path: '', name: 'student-home', component: () => import('../views/pages/student/StudentHome.vue') },
+        { path: 'appointments', name: 'student-appointments', component: () => import('../views/pages/student/MyAppointments.vue') },
+      ],
     },
     {
       path: '/counselor',
