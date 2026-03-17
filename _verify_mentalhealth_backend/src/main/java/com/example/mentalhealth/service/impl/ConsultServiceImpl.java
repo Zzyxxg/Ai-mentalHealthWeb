@@ -593,7 +593,18 @@ public class ConsultServiceImpl implements ConsultService {
     private void writeAppointmentNotification(Long studentUserId, Long counselorUserId, Long appointmentId, boolean created) {
         String type = created ? NotificationType.APPOINTMENT_CREATED.name() : NotificationType.APPOINTMENT_CANCELED.name();
         String title = created ? "预约成功" : "预约已取消";
-        String content = created ? ("你的预约已确认（ID=" + appointmentId + "）") : ("你的预约已取消（ID=" + appointmentId + "）");
+        String counselorName = null;
+        try {
+            CounselorProfile profile = counselorProfileMapper.selectByUserId(counselorUserId);
+            if (profile != null && profile.getRealName() != null && !profile.getRealName().isBlank()) {
+                counselorName = profile.getRealName().trim();
+            }
+        } catch (Exception ignored) {
+        }
+        String counselorLabel = counselorName == null ? ("咨询师(ID=" + counselorUserId + ")") : ("咨询师「" + counselorName + "」");
+        String content = created
+                ? ("你已预约" + counselorLabel + "（预约ID=" + appointmentId + "）")
+                : ("你已取消与" + counselorLabel + "的预约（预约ID=" + appointmentId + "）");
 
         com.example.mentalhealth.entity.Notification n1 = new com.example.mentalhealth.entity.Notification();
         n1.setReceiverUserId(studentUserId);
