@@ -138,8 +138,11 @@ mvn -DskipTests package
 
 - 学生账号：`demo` / `demo1234`
 - 咨询师账号：`counselor1` / `123456`（还有 `counselor2`、`counselor3`）
+- 批量学生账号：`student001` ~ `student100` / `123456`
+- 批量咨询师账号：`counselor001` ~ `counselor050` / `123456`
+- 管理员账号：`admin01` ~ `admin03` / `123456`
 
-管理端账号默认不自动创建，可通过数据库插入一条 `role=ADMIN` 的用户实现。
+说明：初始化逻辑会跳过已存在的账号，不会重复插入。
 
 ---
 
@@ -148,4 +151,3 @@ mvn -DskipTests package
 - MySQL 端口被占用：修改 `docker-compose.yml` 的端口映射或停止本机已有 MySQL。
 - 前端接口 404：确认前端 dev server 代理已启用（`frontend/vite.config.ts`）且后端在 `8080` 运行。
 - 登录后 401：确认后端 `JWT` 配置与前端 `Authorization` Header 拦截器正常。
-

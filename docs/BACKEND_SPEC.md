@@ -239,11 +239,31 @@
 ### 4.9 Notification（站内通知）
 - id
 - receiverUserId
-- type（APPOINTMENT_CREATED/APPOINTMENT_CANCELED/CONSULTANT_REPLIED）
+- studentName（预约类通知可用，展示“用户名称”）
+- counselorName（预约类通知可用，展示“咨询师名称”）
+- type（APPOINTMENT_CREATED/APPOINTMENT_CANCELED/CONSULTANT_REPLIED/STUDENT_MESSAGE）
 - title
 - content
 - readFlag（0/1）
 - createTime
+
+**预约类通知 content 统一文案（示例）**
+- 预约成功：`用户{studentName}预约咨询师{counselorName}（预约ID={id}）`
+- 预约取消：`用户{studentName}取消预约咨询师{counselorName}（预约ID={id}）`
+
+### 6.3 咨询师列表分页（推荐用于学生端首页）
+
+#### GET `/api/v1/consultants/page` 咨询师列表（分页）
+- **查询参数**
+  - pageNum: number（默认 1）
+  - pageSize: number（默认 10）
+  - keyword?: string（姓名/职称/擅长关键词）
+  - startDate?: number（epoch millis，可选；用于计算可预约状态的时间窗）
+  - endDate?: number（epoch millis，可选；用于计算可预约状态的时间窗）
+- **返回**：`PageResp<CounselorPageItemResp>`
+- **说明**
+  - 返回字段包含 `hasAvailableSlots`（布尔），用于前端直接判断“可预约/已下线”
+  - 用于减少前端逐个调用 `/api/v1/schedule-slots` 的请求数量
 
 ## 7. 通知（Notification）接口口径（MVP）
 

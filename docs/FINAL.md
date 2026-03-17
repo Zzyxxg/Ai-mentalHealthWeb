@@ -120,6 +120,7 @@ npm run dev
 ### 5.3 通知体系（前端）
 - 顶部铃铛组件：轮询未读数 + 事件刷新（见 [NotificationBell.vue](file:///Users/zhangzeyu/ai_completion/trace/Ai-mentalHealthWeb/frontend/src/components/NotificationBell.vue)）
 - 通知列表页：支持全部/未读/已读筛选，切换即刷新（见 [NotificationList.vue](file:///Users/zhangzeyu/ai_completion/trace/Ai-mentalHealthWeb/frontend/src/views/pages/common/NotificationList.vue)）
+- 通知列表列：标题、用户名称、咨询师名称、内容、类型、时间、已读
 - 页面间同步：通过 `window.dispatchEvent(new Event('mh:notifications-updated'))` 触发刷新
 
 ## 6. 后端架构说明
@@ -161,7 +162,11 @@ npm run dev
 ### 7.2 咨询师信息（公开可查）
 控制器：[ConsultController.java](file:///Users/zhangzeyu/ai_completion/trace/Ai-mentalHealthWeb/_verify_mentalhealth_backend/src/main/java/com/example/mentalhealth/controller/ConsultController.java)
 - GET `/api/v1/consultants`
+- GET `/api/v1/consultants/page`（分页，返回 `hasAvailableSlots`）
 - GET `/api/v1/consultants/{consultantId}`
+
+说明：
+- 学生端首页建议使用 `/api/v1/consultants/page` 获取列表与可预约状态，避免对每个咨询师多次调用 `/api/v1/schedule-slots`
 
 ### 7.3 排班与预约（ScheduleSlot / Appointment）
 排班：
@@ -207,8 +212,10 @@ npm run dev
 - `CONSULTANT_REPLIED`
 - `STUDENT_MESSAGE`
 
-预约通知内容已包含“咨询师是谁”（姓名优先，无姓名降级为 ID）：
-- [writeAppointmentNotification](file:///Users/zhangzeyu/ai_completion/trace/Ai-mentalHealthWeb/_verify_mentalhealth_backend/src/main/java/com/example/mentalhealth/service/impl/ConsultServiceImpl.java#L593-L613)
+预约类通知额外返回结构化字段：
+- `studentName`：用户名称
+- `counselorName`：咨询师名称
+- `content`：统一文案，例如 `用户{studentName}预约咨询师{counselorName}（预约ID={id}）`
 
 ### 7.6 测评（Assessment）
 控制器：[AssessmentController.java](file:///Users/zhangzeyu/ai_completion/trace/Ai-mentalHealthWeb/_verify_mentalhealth_backend/src/main/java/com/example/mentalhealth/controller/AssessmentController.java)
@@ -245,12 +252,16 @@ npm run dev
 - `audit_log`：审计日志
 
 初始化表结构见：[V1__init.sql](file:///Users/zhangzeyu/ai_completion/trace/Ai-mentalHealthWeb/_verify_mentalhealth_backend/src/main/resources/db/migration/V1__init.sql)
+通知表字段补充（预约类通知展示用）：[V7__notification_actor_names.sql](file:///Users/zhangzeyu/ai_completion/trace/Ai-mentalHealthWeb/_verify_mentalhealth_backend/src/main/resources/db/migration/V7__notification_actor_names.sql)
 
 ## 9. 预置数据（开发演示）
 
 后端启动会初始化测试数据（见 [DataInitializer.java](file:///Users/zhangzeyu/ai_completion/trace/Ai-mentalHealthWeb/_verify_mentalhealth_backend/src/main/java/com/example/mentalhealth/config/DataInitializer.java)）：
 - 学生：`demo / demo1234`
 - 咨询师：`counselor1 / 123456`（以及 counselor2、counselor3）
+- 批量学生：`student001` ~ `student100` / `123456`
+- 批量咨询师：`counselor001` ~ `counselor050` / `123456`
+- 管理员：`admin01` ~ `admin03` / `123456`
 
 ## 10. 构建与交付
 
@@ -285,4 +296,3 @@ mvn -DskipTests package
 ### 11.4 预约失败提示“该时段未配置/不可预约”
 - 先确认咨询师端排班已经创建且状态为 `AVAILABLE`
 - 预约请求必须落在某个 `AVAILABLE` 时段内；若时段被拆分占用，剩余段仍可继续预约
-
