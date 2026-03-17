@@ -9,6 +9,7 @@
         <result column="username" property="username"/>
         <result column="password_hash" property="passwordHash"/>
         <result column="role" property="role"/>
+        <result column="status" property="status"/>
         <result column="nickname" property="nickname"/>
         <result column="avatar_url" property="avatarUrl"/>
         <result column="deleted" property="deleted"/>
@@ -17,7 +18,7 @@
     </resultMap>
 
     <sql id="UserColumns">
-        id, username, password_hash, role, nickname, avatar_url, deleted, create_time, update_time
+        id, username, password_hash, role, status, nickname, avatar_url, deleted, create_time, update_time
     </sql>
 
     <select id="selectByUsername" resultMap="UserResultMap">
@@ -27,9 +28,43 @@
         LIMIT 1
     </select>
 
+    <select id="selectById" resultMap="UserResultMap">
+        SELECT <include refid="UserColumns"/>
+        FROM mentalhealth_user
+        WHERE id = #{id} AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectList" resultMap="UserResultMap">
+        SELECT <include refid="UserColumns"/>
+        FROM mentalhealth_user
+        <where>
+            deleted = 0
+            <if test="role != null">
+                AND role = #{role}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%') OR nickname LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO mentalhealth_user (username, password_hash, role, nickname, avatar_url, deleted)
-        VALUES (#{username}, #{passwordHash}, #{role}, #{nickname}, #{avatarUrl}, 0)
+        INSERT INTO mentalhealth_user (username, password_hash, role, status, nickname, avatar_url, deleted)
+        VALUES (#{username}, #{passwordHash}, #{role}, #{status}, #{nickname}, #{avatarUrl}, 0)
     </insert>
+
+    <update id="updateStatus">
+        UPDATE mentalhealth_user
+        SET status = #{status}, update_time = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="updatePasswordHash">
+        UPDATE mentalhealth_user
+        SET password_hash = #{passwordHash}, update_time = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id} AND deleted = 0
+    </update>
 
 </mapper>
