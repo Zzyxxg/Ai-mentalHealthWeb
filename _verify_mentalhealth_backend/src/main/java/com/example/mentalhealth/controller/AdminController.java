@@ -5,12 +5,15 @@ import com.example.mentalhealth.common.Result;
 import com.example.mentalhealth.config.TraceIdFilter;
 import com.example.mentalhealth.dto.req.AdminResetPasswordReq;
 import com.example.mentalhealth.dto.req.AdminUserStatusPatchReq;
+import com.example.mentalhealth.dto.req.AdminHideReq;
 import com.example.mentalhealth.dto.resp.AdminUserResp;
 import com.example.mentalhealth.dto.resp.AssessmentResp;
 import com.example.mentalhealth.dto.resp.AdminStatsResp;
 import com.example.mentalhealth.dto.resp.ConsultAppointmentResp;
 import com.example.mentalhealth.dto.resp.ConsultThreadResp;
 import com.example.mentalhealth.service.AdminService;
+import com.example.mentalhealth.dto.resp.AdminAuditLogResp;
+import com.example.mentalhealth.service.AuditLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -39,9 +42,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
 
     private final AdminService adminService;
+    private final AuditLogService auditLogService;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService, AuditLogService auditLogService) {
         this.adminService = adminService;
+        this.auditLogService = auditLogService;
     }
 
     @Operation(summary = "用户列表（分页）")
@@ -106,6 +111,34 @@ public class AdminController {
     @GetMapping("/stats")
     public ResponseEntity<Result<AdminStatsResp>> stats(@RequestParam(value = "days", defaultValue = "30") @Min(1) @Max(365) int days) {
         return ResponseEntity.ok(Result.success(adminService.stats(days), TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "管理员下架咨询会话")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @PatchMapping("/consult-threads/{id}/hide")
+    public ResponseEntity<Result<Void>> hideThread(@PathVariable("id") Long id, @Valid @RequestBody AdminHideReq req) {
+        adminService.hideThread(id, req.getReason());
+        return ResponseEntity.ok(Result.success(null, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "管理员下架单条咨询消息")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @PatchMapping("/consult-messages/{id}/hide")
+    public ResponseEntity<Result<Void>> hideMessage(@PathVariable("id") Long id, @Valid @RequestBody AdminHideReq req) {
+        adminService.hideMessage(id, req.getReason());
+        return ResponseEntity.ok(Result.success(null, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "审计日志列表（分页）")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @GetMapping("/audit-logs")
+    public ResponseEntity<Result<PageResp<AdminAuditLogResp>>> pageAuditLogs(
+            @RequestParam(value = "pageNum", defaultValue = "1") @Min(1) int pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") @Min(1) @Max(100) int pageSize,
+            @RequestParam(value = "userId", required = false) Long userId,
+            @RequestParam(value = "action", required = false) String action) {
+        PageResp<AdminAuditLogResp> page = auditLogService.pageLogs(pageNum, pageSize, userId, action);
+        return ResponseEntity.ok(Result.success(page, TraceIdFilter.currentTraceId()));
     }
 }
 

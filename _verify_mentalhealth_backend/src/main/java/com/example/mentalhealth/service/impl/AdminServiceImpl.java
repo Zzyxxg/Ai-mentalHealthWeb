@@ -17,9 +17,14 @@ import com.example.mentalhealth.enums.AssessmentScaleType;
 import com.example.mentalhealth.mapper.AssessmentMapper;
 import com.example.mentalhealth.mapper.AdminStatsMapper;
 import com.example.mentalhealth.mapper.ConsultAppointmentMapper;
+import com.example.mentalhealth.mapper.ConsultMessageMapper;
 import com.example.mentalhealth.mapper.ConsultThreadMapper;
 import com.example.mentalhealth.mapper.UserMapper;
 import com.example.mentalhealth.service.AdminService;
+import com.example.mentalhealth.service.AuditLogService;
+import com.example.mentalhealth.security.UserPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import java.time.ZoneId;
@@ -35,22 +40,36 @@ public class AdminServiceImpl implements AdminService {
     private final UserMapper userMapper;
     private final ConsultAppointmentMapper consultAppointmentMapper;
     private final ConsultThreadMapper consultThreadMapper;
+    private final ConsultMessageMapper consultMessageMapper;
     private final AssessmentMapper assessmentMapper;
     private final AdminStatsMapper adminStatsMapper;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
 
     public AdminServiceImpl(UserMapper userMapper,
                             ConsultAppointmentMapper consultAppointmentMapper,
                             ConsultThreadMapper consultThreadMapper,
+                            ConsultMessageMapper consultMessageMapper,
                             AssessmentMapper assessmentMapper,
                             AdminStatsMapper adminStatsMapper,
-                            PasswordEncoder passwordEncoder) {
+                            PasswordEncoder passwordEncoder,
+                            AuditLogService auditLogService) {
         this.userMapper = userMapper;
         this.consultAppointmentMapper = consultAppointmentMapper;
         this.consultThreadMapper = consultThreadMapper;
+        this.consultMessageMapper = consultMessageMapper;
         this.assessmentMapper = assessmentMapper;
         this.adminStatsMapper = adminStatsMapper;
         this.passwordEncoder = passwordEncoder;
+        this.auditLogService = auditLogService;
+    }
+
+    private UserPrincipal getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal) {
+            return (UserPrincipal) auth.getPrincipal();
+        }
+        return null;
     }
 
     @Override
@@ -80,6 +99,11 @@ public class AdminServiceImpl implements AdminService {
             throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
         }
         userMapper.updateStatus(userId, s);
+        
+        UserPrincipal currentUser = getCurrentUser();
+        if (currentUser != null) {
+            auditLogService.record(currentUser.getUserId(), currentUser.getUsername(), "USER_UPDATE_STATUS", "USER", userId, "Updated status to " + s);
+        }
     }
 
     @Override
@@ -93,6 +117,11 @@ public class AdminServiceImpl implements AdminService {
         }
         String hash = passwordEncoder.encode(newPassword);
         userMapper.updatePasswordHash(userId, hash);
+        
+        UserPrincipal currentUser = getCurrentUser();
+        if (currentUser != null) {
+            auditLogService.record(currentUser.getUserId(), currentUser.getUsername(), "USER_RESET_PASSWORD", "USER", userId, "Reset password");
+        }
     }
 
     @Override
@@ -159,6 +188,32 @@ public class AdminServiceImpl implements AdminService {
         resp.setAssessmentsDaily(adminStatsMapper.dailyAssessments(d));
         resp.setAssessmentLevelDist(adminStatsMapper.assessmentLevelDist());
         return resp;
+    }
+
+    @Override
+    public void hideThread(Long threadId, String reason) {
+        int rows = consultThreadMapper.updateHidden(threadId, true, reason);
+        if (rows == 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "咨询会话不存在");
+        }
+        
+        UserPrincipal currentUser = getCurrentUser();
+        if (currentUser != null) {
+            auditLogService.record(currentUser.getUserId(), currentUser.getUsername(), "CONTENT_HIDE", "THREAD", threadId, "Hidden reason: " + reason);
+        }
+    }
+
+    @Override
+    public void hideMessage(Long messageId, String reason) {
+        int rows = consultMessageMapper.updateHidden(messageId, true, reason);
+        if (rows == 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "咨询消息不存在");
+        }
+        
+        UserPrincipal currentUser = getCurrentUser();
+        if (currentUser != null) {
+            auditLogService.record(currentUser.getUserId(), currentUser.getUsername(), "CONTENT_HIDE", "MESSAGE", messageId, "Hidden reason: " + reason);
+        }
     }
 
     private AdminUserResp toResp(User u) {

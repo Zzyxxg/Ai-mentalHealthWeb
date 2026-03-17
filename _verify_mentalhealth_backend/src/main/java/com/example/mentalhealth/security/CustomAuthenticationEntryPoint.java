@@ -1,0 +1,31 @@
+package com.example.mentalhealth.security;
+
+import com.example.mentalhealth.common.ErrorCode;
+import com.example.mentalhealth.common.Result;
+import com.example.mentalhealth.config.TraceIdFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.stereotype.Component;
+
+@Component
+public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response,
+                         AuthenticationException authException) throws IOException, ServletException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+
+        Result<Void> result = Result.fail(ErrorCode.UNAUTHORIZED, "未登录或登录已过期", TraceIdFilter.currentTraceId());
+        response.getWriter().write(objectMapper.writeValueAsString(result));
+    }
+}

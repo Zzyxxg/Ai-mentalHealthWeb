@@ -22,5 +22,9 @@ public interface AdminService {
     PageResp<AssessmentResp> pageAssessments(int pageNum, int pageSize, String scaleType);
 
     AdminStatsResp stats(int days);
+
+    void hideThread(Long threadId, String reason);
+
+    void hideMessage(Long messageId, String reason);
 }
 

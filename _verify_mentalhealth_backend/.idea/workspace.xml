@@ -4,7 +4,44 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="143d5bc8-8799-414d-9265-b58619d6f377" name="Changes" comment="上传" />
+    <list default="true" id="143d5bc8-8799-414d-9265-b58619d6f377" name="Changes" comment="上传">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/common/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/common/GlobalExceptionHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/config/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/controller/AdminController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/controller/AdminController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/controller/AuthController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/AdminService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/AdminService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/AuthService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/AuthService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/impl/AdminServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/impl/AdminServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/impl/AuthServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/impl/AuthServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/impl/ConsultServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/mentalhealth/service/impl/ConsultServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/common/GlobalExceptionHandler.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/common/GlobalExceptionHandler.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/config/DataInitializer.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/config/DataInitializer.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/config/SecurityConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/config/SecurityConfig.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/controller/AdminController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/controller/AdminController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/controller/AuthController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/controller/AuthController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/security/JwtAuthenticationFilter.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/security/JwtAuthenticationFilter.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/AdminService.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/AdminService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/AuthService.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/AuthService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/impl/AdminServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/impl/AdminServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/impl/AuthServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/impl/AuthServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/impl/ConsultServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/example/mentalhealth/service/impl/ConsultServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../docs/FRONTEND_SCHEDULE.md" beforeDir="false" afterPath="$PROJECT_DIR$/../docs/FRONTEND_SCHEDULE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/router/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/router/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/services/consult.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/services/consult.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/layouts/CounselorLayout.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/layouts/CounselorLayout.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/layouts/StudentLayout.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/layouts/StudentLayout.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/pages/LoginPage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/pages/LoginPage.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/pages/counselor/ConsultationDetail.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/pages/counselor/ConsultationDetail.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/pages/counselor/ConsultationList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/pages/counselor/ConsultationList.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/pages/counselor/CounselorHome.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/pages/counselor/CounselorHome.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/pages/student/MyAppointments.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/pages/student/MyAppointments.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/views/pages/student/StudentHome.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/views/pages/student/StudentHome.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tasks.md" beforeDir="false" afterPath="$PROJECT_DIR$/../tasks.md" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

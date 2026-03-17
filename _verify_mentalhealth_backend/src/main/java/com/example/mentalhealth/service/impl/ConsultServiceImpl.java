@@ -28,6 +28,10 @@ import com.example.mentalhealth.mapper.CounselorProfileMapper;
 import com.example.mentalhealth.mapper.NotificationMapper;
 import com.example.mentalhealth.mapper.ScheduleSlotMapper;
 import com.example.mentalhealth.service.ConsultService;
+import com.example.mentalhealth.service.AuditLogService;
+import com.example.mentalhealth.security.UserPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import java.time.Instant;
@@ -66,6 +70,7 @@ public class ConsultServiceImpl implements ConsultService {
     private final NotificationMapper notificationMapper;
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedissonClient redissonClient;
+    private final AuditLogService auditLogService;
 
     public ConsultServiceImpl(CounselorProfileMapper counselorProfileMapper,
                               ConsultAppointmentMapper consultAppointmentMapper,
@@ -74,7 +79,8 @@ public class ConsultServiceImpl implements ConsultService {
                               ScheduleSlotMapper scheduleSlotMapper,
                               NotificationMapper notificationMapper,
                               RedisTemplate<String, Object> redisTemplate,
-                              RedissonClient redissonClient) {
+                              RedissonClient redissonClient,
+                              AuditLogService auditLogService) {
         this.counselorProfileMapper = counselorProfileMapper;
         this.consultAppointmentMapper = consultAppointmentMapper;
         this.consultThreadMapper = consultThreadMapper;
@@ -83,6 +89,15 @@ public class ConsultServiceImpl implements ConsultService {
         this.notificationMapper = notificationMapper;
         this.redisTemplate = redisTemplate;
         this.redissonClient = redissonClient;
+        this.auditLogService = auditLogService;
+    }
+
+    private UserPrincipal getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal) {
+            return (UserPrincipal) auth.getPrincipal();
+        }
+        return null;
     }
 
     @Override
@@ -365,6 +380,12 @@ public class ConsultServiceImpl implements ConsultService {
             throw new BizException(ErrorCode.NOT_FOUND, "预约不存在");
         }
         cacheAppointment(latest);
+        
+        UserPrincipal currentUser = getCurrentUser();
+        if (currentUser != null) {
+            auditLogService.record(currentUser.getUserId(), currentUser.getUsername(), "APPOINTMENT_CANCEL", "APPOINTMENT", appointmentId, "Canceled appointment");
+        }
+        
         return toResp(latest);
     }
 
@@ -386,13 +407,12 @@ public class ConsultServiceImpl implements ConsultService {
         if (!Objects.equals(slot.getCounselorUserId(), counselorUserId)) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权限操作该排班时段");
         }
-        if (slot.getStatus() == ScheduleSlotStatus.OCCUPIED) {
-            throw new BizException(ErrorCode.CONFLICT, "已占用时段不可手动修改状态");
-        }
+        
         LocalDateTime slotStart = LocalDateTime.of(slot.getDate(), slot.getStartTime());
-        if (slotStart.isBefore(LocalDateTime.now())) {
-            throw new BizException(ErrorCode.PARAM_ERROR, "仅允许修改未来时段");
-        }
+        // 允许修改过去时段，以应对特殊场景
+        // if (slotStart.isBefore(LocalDateTime.now())) {
+        //     throw new BizException(ErrorCode.PARAM_ERROR, "仅允许修改未来时段");
+        // }
 
         scheduleSlotMapper.updateStatus(slotId, target);
     }
@@ -407,13 +427,12 @@ public class ConsultServiceImpl implements ConsultService {
         if (!Objects.equals(slot.getCounselorUserId(), counselorUserId)) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权限操作该排班时段");
         }
-        if (slot.getStatus() == ScheduleSlotStatus.OCCUPIED) {
-            throw new BizException(ErrorCode.CONFLICT, "已占用时段不可删除");
-        }
+        
         LocalDateTime slotStart = LocalDateTime.of(slot.getDate(), slot.getStartTime());
-        if (slotStart.isBefore(LocalDateTime.now())) {
-            throw new BizException(ErrorCode.PARAM_ERROR, "仅允许删除未来时段");
-        }
+        // 允许删除过去时段，以应对特殊场景
+        // if (slotStart.isBefore(LocalDateTime.now())) {
+        //     throw new BizException(ErrorCode.PARAM_ERROR, "仅允许删除未来时段");
+        // }
         scheduleSlotMapper.deleteById(slotId);
     }
 
@@ -579,6 +598,11 @@ public class ConsultServiceImpl implements ConsultService {
             return;
         }
         consultThreadMapper.updateStatus(threadId, ConsultThreadStatus.CLOSED.name());
+        
+        UserPrincipal currentUser = getCurrentUser();
+        if (currentUser != null) {
+            auditLogService.record(currentUser.getUserId(), currentUser.getUsername(), "THREAD_CLOSE", "THREAD", threadId, "Closed thread");
+        }
     }
 
     @Override
