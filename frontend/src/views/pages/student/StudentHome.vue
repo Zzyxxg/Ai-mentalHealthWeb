@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listConsultants, createAppointment, createConsultThread, type Counselor } from '../../../services/consult'
-import { ElMessage } from 'element-plus'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import dayjs from 'dayjs'
 
 const router = useRouter()
@@ -12,7 +12,8 @@ const keyword = ref('')
 
 // 预约相关
 const bookingDialogVisible = ref(false)
-const bookingForm = ref({
+const bookingFormRef = ref<FormInstance>()
+const bookingForm = reactive({
   counselorUserId: 0,
   startTime: '',
   durationMinutes: 45,
@@ -21,14 +22,35 @@ const bookingForm = ref({
 const selectedConsultant = ref<Counselor | null>(null)
 const submitting = ref(false)
 
+const bookingRules = reactive<FormRules>({
+  startTime: [
+    { required: true, message: '请选择预约开始时间', trigger: 'change' }
+  ],
+  durationMinutes: [
+    { required: true, message: '请选择咨询时长', trigger: 'change' }
+  ]
+})
+
 // 咨询相关
 const consultDialogVisible = ref(false)
-const consultForm = ref({
+const consultFormRef = ref<FormInstance>()
+const consultForm = reactive({
   counselorUserId: 0,
   topic: '',
   content: ''
 })
 const submittingConsult = ref(false)
+
+const consultRules = reactive<FormRules>({
+  topic: [
+    { required: true, message: '请输入咨询主题', trigger: 'blur' },
+    { min: 2, max: 100, message: '主题长度在 2 到 100 个字符', trigger: 'blur' }
+  ],
+  content: [
+    { required: true, message: '请输入咨询内容', trigger: 'blur' },
+    { min: 10, message: '内容长度至少 10 个字符', trigger: 'blur' }
+  ]
+})
 
 async function fetchConsultants() {
   loading.value = true
@@ -48,75 +70,69 @@ async function fetchConsultants() {
 
 function openBookingDialog(c: Counselor) {
   selectedConsultant.value = c
-  bookingForm.value = {
-    counselorUserId: c.userId,
-    startTime: dayjs().add(1, 'day').hour(10).minute(0).second(0).format('YYYY-MM-DD HH:mm:ss'),
-    durationMinutes: 45,
-    note: ''
-  }
+  bookingForm.counselorUserId = c.userId
+  bookingForm.startTime = dayjs().add(1, 'day').hour(10).minute(0).second(0).format('YYYY-MM-DD HH:mm:ss')
+  bookingForm.durationMinutes = 45
+  bookingForm.note = ''
   bookingDialogVisible.value = true
 }
 
 async function handleBooking() {
-  if (!bookingForm.value.startTime) {
-    ElMessage.warning('请选择预约时间')
-    return
-  }
+  if (!bookingFormRef.value) return
   
-  submitting.value = true
-  try {
-    const res = await createAppointment({
-      ...bookingForm.value,
-      startTime: dayjs(bookingForm.value.startTime).valueOf()
-    })
-    if (res.code === 0) {
-      ElMessage.success('预约成功！')
-      bookingDialogVisible.value = false
-    } else {
-      ElMessage.error(res.msg || '预约失败')
+  await bookingFormRef.value.validate(async (valid) => {
+    if (!valid) return
+
+    submitting.value = true
+    try {
+      const res = await createAppointment({
+        ...bookingForm,
+        startTime: dayjs(bookingForm.startTime).valueOf()
+      })
+      if (res.code === 0) {
+        ElMessage.success('预约成功！')
+        bookingDialogVisible.value = false
+      } else {
+        ElMessage.error(res.msg || '预约失败')
+      }
+    } catch (e: any) {
+      ElMessage.error(e?.message || '网络错误')
+    } finally {
+      submitting.value = false
     }
-  } catch (e: any) {
-    ElMessage.error(e?.message || '网络错误')
-  } finally {
-    submitting.value = false
-  }
+  })
 }
 
 function openConsultDialog(c: Counselor) {
   selectedConsultant.value = c
-  consultForm.value = {
-    counselorUserId: c.userId,
-    topic: '',
-    content: ''
-  }
+  consultForm.counselorUserId = c.userId
+  consultForm.topic = ''
+  consultForm.content = ''
   consultDialogVisible.value = true
 }
 
 async function handleConsult() {
-  if (!consultForm.value.topic.trim()) {
-    ElMessage.warning('请输入咨询主题')
-    return
-  }
-  if (!consultForm.value.content.trim()) {
-    ElMessage.warning('请输入咨询内容')
-    return
-  }
-  
-  submittingConsult.value = true
-  try {
-    const res = await createConsultThread(consultForm.value)
-    if (res.code === 0) {
-      ElMessage.success('咨询发起成功！')
-      consultDialogVisible.value = false
-      router.push({ name: 'student-consultation-detail', params: { id: res.data.id } })
-    } else {
-      ElMessage.error(res.msg || '发起咨询失败')
+  if (!consultFormRef.value) return
+
+  await consultFormRef.value.validate(async (valid) => {
+    if (!valid) return
+
+    submittingConsult.value = true
+    try {
+      const res = await createConsultThread(consultForm)
+      if (res.code === 0) {
+        ElMessage.success('咨询发起成功！')
+        consultDialogVisible.value = false
+        router.push({ name: 'student-consultation-detail', params: { id: res.data.id } })
+      } else {
+        ElMessage.error(res.msg || '发起咨询失败')
+      }
+    } catch (e: any) {
+      ElMessage.error(e?.message || '网络错误')
+    } finally {
+      submittingConsult.value = false
     }
-  } catch (e: any) {
-    ElMessage.error(e?.message || '网络错误')
-  } finally {
-    submittingConsult.value = false
-  }
+  })
 }
 
 onMounted(() => {
@@ -179,11 +195,11 @@ onMounted(() => {
       width="500px"
       destroy-on-close
     >
-      <el-form :model="consultForm" label-position="top">
-        <el-form-item label="咨询主题" required>
+      <el-form ref="consultFormRef" :model="consultForm" :rules="consultRules" label-position="top">
+        <el-form-item label="咨询主题" prop="topic">
           <el-input v-model="consultForm.topic" placeholder="请输入咨询主题" />
         </el-form-item>
-        <el-form-item label="咨询内容" required>
+        <el-form-item label="咨询内容" prop="content">
           <el-input
             v-model="consultForm.content"
             type="textarea"
@@ -207,8 +223,8 @@ onMounted(() => {
       width="400px"
       destroy-on-close
     >
-      <el-form :model="bookingForm" label-position="top">
-        <el-form-item label="咨询开始时间" required>
+      <el-form ref="bookingFormRef" :model="bookingForm" :rules="bookingRules" label-position="top">
+        <el-form-item label="咨询开始时间" prop="startTime">
           <el-date-picker
             v-model="bookingForm.startTime"
             type="datetime"
@@ -218,14 +234,14 @@ onMounted(() => {
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="咨询时长(分钟)">
+        <el-form-item label="咨询时长(分钟)" prop="durationMinutes">
           <el-select v-model="bookingForm.durationMinutes" style="width: 100%">
             <el-option label="30分钟" :value="30" />
             <el-option label="45分钟" :value="45" />
             <el-option label="60分钟" :value="60" />
           </el-select>
         </el-form-item>
-        <el-form-item label="备注说明">
+        <el-form-item label="备注说明" prop="note">
           <el-input
             v-model="bookingForm.note"
             type="textarea"

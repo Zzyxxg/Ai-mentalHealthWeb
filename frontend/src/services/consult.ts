@@ -41,6 +41,8 @@ export interface ConsultThread {
   topic: string
   content: string
   status: string
+  hidden?: boolean
+  hiddenReason?: string
   createTime: number
   updateTime: number
   messages?: ConsultMessage[]
@@ -59,6 +61,8 @@ export interface ConsultMessage {
   senderId?: number
   senderName?: string
   content: string
+  hidden?: boolean
+  hiddenReason?: string
   createTime: number
 }
 

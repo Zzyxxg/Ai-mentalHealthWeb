@@ -1,0 +1,21 @@
+.DS_Store
+.idea/
+.vscode/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend
+_verify_mentalhealth_backend/target/
+_verify_mentalhealth_backend/.idea/
+_verify_mentalhealth_backend/.jdk/
+
+# Logs
+*.log
+
+# Env
+.env
+.env.*
+

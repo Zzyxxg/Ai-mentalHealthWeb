@@ -1,9 +1,13 @@
 # 后端对齐说明（基于 PRD MVP v1.0）
 
 ## 1. 对齐结论（前后端统一口径）
-### 1.1 咨询师账号来源与维护方式
-- 咨询师账号由管理员创建与维护
-- 咨询师不可自助注册；管理员可对咨询师账号进行启用/禁用与重置密码
+### 1.1 账号注册与维护方式
+- 学生与咨询师均支持自主注册。
+- 注册入口：系统首页/登录页提供“学生注册”与“咨询师申请”入口。
+- 审核机制：
+  - 学生注册：即时生效（默认 ENABLED）。
+  - 咨询师注册：即时生效（MVP 简化版，默认 ENABLED；后续可扩展为 ADMIN 审核）。
+- 管理员权限：管理员仍保留创建、启用/禁用、重置密码的权限。
 
 ### 1.2 学生身份字段范围
 - 学生端展示字段：昵称、头像（不展示学号/姓名）
@@ -39,6 +43,35 @@
 ### 2.3 分页与时间字段
 - 分页参数统一：pageNum、pageSize
 - 时间字段统一：毫秒时间戳（epoch millis）
+
+## 5. 注册（Registration）接口口径（MVP）
+
+### 5.1 POST `/api/v1/auth/register/student`
+- **功能**：学生自主注册
+- **请求体**
+  - username: string (必填，4-32位)
+  - password: string (必填，6-32位)
+  - nickname: string (必填)
+  - realName: string (可选)
+  - studentNo: string (可选)
+- **业务逻辑**
+  - 校验 username 唯一性
+  - 创建 User (role=STUDENT, status=ENABLED)
+  - 创建 StudentProfile (可选字段入库)
+
+### 5.2 POST `/api/v1/auth/register/counselor`
+- **功能**：咨询师自主注册
+- **请求体**
+  - username: string (必填)
+  - password: string (必填)
+  - realName: string (必填)
+  - title: string (必填)
+  - expertise: string (必填)
+  - intro: string (可选)
+- **业务逻辑**
+  - 校验 username 唯一性
+  - 创建 User (role=CONSULTANT, status=ENABLED)
+  - 创建 CounselorProfile (必填项入库)
 
 ## 3. 核心枚举（代码值）
 ### 3.1 咨询线程状态（consult_thread_status）
@@ -249,6 +282,39 @@
 
 ### 9.7 GET `/api/v1/admin/stats`
 - 查询：days（默认30）
+- 返回：`AdminStatsResp`
+
+### 9.8 PATCH `/api/v1/admin/consult-threads/{id}/hide`
+- **请求**：`{ reason: string }`
+- **功能**：管理员下架咨询会话
+
+### 9.9 PATCH `/api/v1/admin/consult-messages/{id}/hide`
+- **请求**：`{ reason: string }`
+- **功能**：管理员下架单条咨询消息
+
+### 9.10 GET `/api/v1/admin/audit-logs`
+- **查询参数**：pageNum/pageSize/userId?/action?
+- **返回**：`PageResp<AdminAuditLogResp>`
+
+## 10. 审计日志（Audit Log）规范
+### 10.1 关键操作定义
+- LOGIN：登录
+- LOGOUT：退出
+- USER_UPDATE_STATUS：修改用户状态
+- USER_RESET_PASSWORD：重置密码
+- APPOINTMENT_CANCEL：取消预约
+- THREAD_CLOSE：结束咨询
+- CONTENT_HIDE：内容下架（线程/消息）
+
+### 10.2 数据模型
+- id
+- userId
+- username
+- action（操作类型）
+- targetId（操作目标ID，如 threadId）
+- detail（操作详情 JSON）
+- ip
+- createTime
 
 ### 4.10 AuditLog（审计日志）
 - id

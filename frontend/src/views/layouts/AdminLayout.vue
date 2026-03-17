@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { router } from '../../router'
 import { useAuthStore } from '../../stores/auth'
+import NotificationBell from '../../components/NotificationBell.vue'
 
 const authStore = useAuthStore()
 
@@ -18,7 +19,9 @@ async function onLogout() {
         <el-menu-item index="/admin">首页</el-menu-item>
         <el-menu-item index="/admin/users">用户管理</el-menu-item>
         <el-menu-item index="/admin/appointments">预约记录</el-menu-item>
+        <el-menu-item index="/admin/consultations">咨询管理</el-menu-item>
         <el-menu-item index="/admin/stats">统计概览</el-menu-item>
+        <el-menu-item index="/admin/audit-logs">审计日志</el-menu-item>
         <el-menu-item index="/admin/notifications">通知中心</el-menu-item>
       </el-menu>
     </el-aside>
@@ -26,6 +29,7 @@ async function onLogout() {
       <el-header class="header">
         <div class="header-left">管理端</div>
         <div class="header-right">
+          <NotificationBell style="margin-right: 16px" />
           <el-button type="primary" plain @click="onLogout">退出登录</el-button>
         </div>
       </el-header>

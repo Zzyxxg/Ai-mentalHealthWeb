@@ -2,8 +2,8 @@
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { listConsultThreads, type ConsultThread } from '../../../services/consult'
+import { formatConsultThreadStatus, formatDateTime } from '../../../utils/format'
 import { ElMessage } from 'element-plus'
-import dayjs from 'dayjs'
 
 const router = useRouter()
 const activeTab = ref('UNPROCESSED')
@@ -49,10 +49,6 @@ function goToDetail(id: number) {
   router.push({ name: 'counselor-consultation-detail', params: { id } })
 }
 
-function formatTime(time: number) {
-  return dayjs(time).format('YYYY-MM-DD HH:mm')
-}
-
 onMounted(() => {
   fetchThreads()
 })
@@ -92,8 +88,9 @@ onMounted(() => {
             <div class="title-row">
               <span class="thread-title">{{ thread.topic }}</span>
               <el-tag v-if="activeTab === 'UNPROCESSED'" type="danger" size="small" effect="plain">未回复</el-tag>
+              <el-tag v-if="thread.hidden" type="danger" size="small">已下架</el-tag>
             </div>
-            <div class="time">{{ formatTime(thread.createTime) }}</div>
+            <div class="time">{{ formatDateTime(thread.createTime) }}</div>
           </div>
           <div class="content-preview">{{ thread.content }}</div>
           <div class="footer">

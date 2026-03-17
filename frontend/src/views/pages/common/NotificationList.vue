@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listNotifications, readAllNotifications, readNotification, type NotificationItem } from '../../../services/notification'
+import { formatNotificationType, formatDateTime } from '../../../utils/format'
 
 const loading = ref(false)
 const pageNum = ref(1)
@@ -9,6 +10,11 @@ const pageSize = ref(10)
 const total = ref(0)
 const list = ref<NotificationItem[]>([])
 const filter = ref<'ALL' | 'UNREAD' | 'READ'>('ALL')
+const options = [
+  { label: '全部', value: 'ALL' },
+  { label: '未读', value: 'UNREAD' },
+  { label: '已读', value: 'READ' }
+]
 
 const readFlagParam = computed<0 | 1 | undefined>(() => {
   if (filter.value === 'UNREAD') return 0
@@ -57,7 +63,7 @@ onMounted(() => refresh())
 <template>
   <div class="page">
     <div class="toolbar">
-      <el-segmented v-model="filter" :options="['ALL', 'UNREAD', 'READ']" />
+      <el-segmented v-model="filter" :options="options" />
       <el-button type="primary" @click="refresh" :loading="loading">刷新</el-button>
       <el-button type="success" plain @click="onReadAll">全部已读</el-button>
     </div>
@@ -66,15 +72,21 @@ onMounted(() => refresh())
       <el-table :data="list" v-loading="loading" style="width: 100%" @row-click="onRead">
         <el-table-column prop="title" label="标题" min-width="160" />
         <el-table-column prop="content" label="内容" min-width="260" />
-        <el-table-column prop="type" label="类型" width="180" />
-        <el-table-column prop="createTime" label="时间" width="180">
+        <el-table-column label="类型" width="180">
           <template #default="{ row }">
-            {{ new Date(row.createTime).toLocaleString() }}
+            {{ formatNotificationType(row.type) }}
           </template>
         </el-table-column>
-        <el-table-column prop="readFlag" label="已读" width="80">
+        <el-table-column prop="createTime" label="时间" width="180">
           <template #default="{ row }">
-            {{ row.readFlag ? '是' : '否' }}
+            {{ formatDateTime(row.createTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="已读" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.readFlag ? 'success' : 'info'">
+              {{ row.readFlag ? '已读' : '未读' }}
+            </el-tag>
           </template>
         </el-table-column>
       </el-table>

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { completeAppointment, listAppointments, type Appointment } from '../../../services/consult'
+import { formatAppointmentStatus, formatDateTime } from '../../../utils/format'
 
 const loading = ref(false)
 const pageNum = ref(1)
@@ -38,6 +39,17 @@ async function onComplete(appt: Appointment) {
   }
 }
 
+function getStatusType(s: string) {
+  switch (s) {
+    case 'CREATED': return 'info'
+    case 'CONFIRMED': return 'success'
+    case 'CANCELED':
+    case 'CANCELLED': return 'danger'
+    case 'COMPLETED': return 'warning'
+    default: return ''
+  }
+}
+
 onMounted(() => {
   refresh()
 })
@@ -47,9 +59,9 @@ onMounted(() => {
   <div class="page">
     <div class="toolbar">
       <el-select v-model="statusFilter" placeholder="状态筛选" clearable style="width: 180px">
-        <el-option label="CONFIRMED" value="CONFIRMED" />
-        <el-option label="CANCELED" value="CANCELED" />
-        <el-option label="COMPLETED" value="COMPLETED" />
+        <el-option label="已预约" value="CONFIRMED" />
+        <el-option label="已取消" value="CANCELED" />
+        <el-option label="已完成" value="COMPLETED" />
       </el-select>
       <el-button type="primary" @click="refresh" :loading="loading">刷新</el-button>
     </div>
@@ -59,11 +71,15 @@ onMounted(() => {
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="startTime" label="开始时间" min-width="180">
           <template #default="{ row }">
-            {{ new Date(row.startTime).toLocaleString() }}
+            {{ formatDateTime(row.startTime) }}
           </template>
         </el-table-column>
         <el-table-column prop="durationMinutes" label="时长" width="100" />
-        <el-table-column prop="status" label="状态" width="120" />
+        <el-table-column label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.status)">{{ formatAppointmentStatus(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="note" label="备注" min-width="200" />
         <el-table-column label="操作" width="140">
           <template #default="{ row }">

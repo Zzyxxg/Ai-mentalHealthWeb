@@ -55,3 +55,30 @@ export async function adminPageAssessments(pageNum = 1, pageSize = 10, scaleType
   return resp.data
 }
 
+export async function adminHideThread(id: number, reason: string) {
+  const resp: AxiosResponse<ApiResult<void>> = await http.patch(`/api/v1/admin/consult-threads/${id}/hide`, { reason })
+  return resp.data
+}
+
+export async function adminHideMessage(id: number, reason: string) {
+  const resp: AxiosResponse<ApiResult<void>> = await http.patch(`/api/v1/admin/consult-messages/${id}/hide`, { reason })
+  return resp.data
+}
+
+export interface AdminAuditLog {
+  id: number
+  userId: number
+  username: string
+  action: string
+  targetId?: number
+  detail?: string
+  ip?: string
+  createTime: number
+}
+
+export async function adminListAuditLogs(pageNum = 1, pageSize = 10, userId?: number, action?: string) {
+  const params = { pageNum, pageSize, userId, action }
+  const resp: AxiosResponse<ApiResult<PageResp<AdminAuditLog>>> = await http.get('/api/v1/admin/audit-logs', { params })
+  return resp.data
+}
+

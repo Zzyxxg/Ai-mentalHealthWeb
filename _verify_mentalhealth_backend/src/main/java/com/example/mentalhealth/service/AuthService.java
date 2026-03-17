@@ -8,5 +8,11 @@ public interface AuthService {
 
     LoginResp login(LoginReq req);
 
+    void registerStudent(com.example.mentalhealth.dto.req.StudentRegisterReq req);
+
+    void registerCounselor(com.example.mentalhealth.dto.req.CounselorRegisterReq req);
+
     UserMeResp me(Long userId, String username);
+
+    void logout(Long userId, String username);
 }

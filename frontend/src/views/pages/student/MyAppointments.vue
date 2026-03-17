@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { listAppointments, cancelAppointment, type Appointment } from '../../../services/consult'
+import { formatAppointmentStatus, formatDateTime } from '../../../utils/format'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import dayjs from 'dayjs'
 
 const loading = ref(false)
 const appointments = ref<Appointment[]>([])
@@ -47,19 +47,10 @@ function getStatusType(s: string) {
   switch (s) {
     case 'CREATED': return 'info'
     case 'CONFIRMED': return 'success'
-    case 'CANCELED': return 'danger'
+    case 'CANCELED':
+    case 'CANCELLED': return 'danger'
     case 'COMPLETED': return 'warning'
     default: return ''
-  }
-}
-
-function getStatusLabel(s: string) {
-  switch (s) {
-    case 'CREATED': return '已提交'
-    case 'CONFIRMED': return '已确认'
-    case 'CANCELED': return '已取消'
-    case 'COMPLETED': return '已完成'
-    default: return s
   }
 }
 
@@ -86,13 +77,13 @@ onMounted(() => {
       <el-table :data="appointments" style="width: 100%">
         <el-table-column label="咨询开始时间" min-width="180">
           <template #default="{ row }">
-            {{ dayjs(row.startTime).format('YYYY-MM-DD HH:mm') }}
+            {{ formatDateTime(row.startTime) }}
           </template>
         </el-table-column>
         <el-table-column prop="durationMinutes" label="时长(分钟)" width="100" />
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
+            <el-tag :type="getStatusType(row.status)">{{ formatAppointmentStatus(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="note" label="备注" show-overflow-tooltip />

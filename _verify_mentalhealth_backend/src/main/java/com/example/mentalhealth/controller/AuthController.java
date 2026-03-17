@@ -2,7 +2,9 @@ package com.example.mentalhealth.controller;
 
 import com.example.mentalhealth.common.Result;
 import com.example.mentalhealth.config.TraceIdFilter;
+import com.example.mentalhealth.dto.req.CounselorRegisterReq;
 import com.example.mentalhealth.dto.req.LoginReq;
+import com.example.mentalhealth.dto.req.StudentRegisterReq;
 import com.example.mentalhealth.dto.resp.LoginResp;
 import com.example.mentalhealth.dto.resp.UserMeResp;
 import com.example.mentalhealth.security.UserPrincipal;
@@ -41,6 +43,22 @@ public class AuthController {
         return ResponseEntity.ok(Result.success(resp, TraceIdFilter.currentTraceId()));
     }
 
+    @Operation(summary = "学生注册")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @PostMapping("/auth/register/student")
+    public ResponseEntity<Result<Void>> registerStudent(@Valid @RequestBody StudentRegisterReq req) {
+        authService.registerStudent(req);
+        return ResponseEntity.ok(Result.success(null, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "咨询师注册")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @PostMapping("/auth/register/counselor")
+    public ResponseEntity<Result<Void>> registerCounselor(@Valid @RequestBody CounselorRegisterReq req) {
+        authService.registerCounselor(req);
+        return ResponseEntity.ok(Result.success(null, TraceIdFilter.currentTraceId()));
+    }
+
     @Operation(summary = "当前用户信息")
     @ApiResponse(responseCode = "200", description = "成功")
     @GetMapping("/auth/me")
@@ -48,5 +66,15 @@ public class AuthController {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         UserMeResp resp = authService.me(principal.getUserId(), principal.getUsername());
         return ResponseEntity.ok(Result.success(resp, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "退出登录")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @PostMapping("/auth/logout")
+    public ResponseEntity<Result<Void>> logout(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
+            authService.logout(principal.getUserId(), principal.getUsername());
+        }
+        return ResponseEntity.ok(Result.success(null, TraceIdFilter.currentTraceId()));
     }
 }

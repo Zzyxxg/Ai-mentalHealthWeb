@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
                 .map(ObjectError::getDefaultMessage)
                 .collect(Collectors.joining("; "));
         log.warn("ValidationException: {}", msg);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        return ResponseEntity.status(HttpStatus.OK)
                 .body(Result.fail(ErrorCode.PARAM_ERROR, msg, TraceIdFilter.currentTraceId()));
     }
 
@@ -40,7 +40,7 @@ public class GlobalExceptionHandler {
                 .map(ObjectError::getDefaultMessage)
                 .collect(Collectors.joining("; "));
         log.warn("BindException: {}", msg);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        return ResponseEntity.status(HttpStatus.OK)
                 .body(Result.fail(ErrorCode.PARAM_ERROR, msg, TraceIdFilter.currentTraceId()));
     }
 
