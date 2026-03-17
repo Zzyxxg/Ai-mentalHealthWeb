@@ -25,6 +25,8 @@ const submitting = ref(false)
 const slotsLoading = ref(false)
 const availableSlots = ref<ScheduleSlot[]>([])
 const maxDuration = ref(240)
+const counselorBookableMap = ref<Record<number, boolean | null>>({})
+const counselorBookableLoadingMap = ref<Record<number, boolean>>({})
 
 const canSubmitBooking = computed(() => {
   return availableSlots.value.length > 0 && bookingForm.slotId > 0 && Boolean(bookingForm.startTime)
@@ -65,6 +67,7 @@ async function fetchConsultants() {
     const res = await listConsultants(keyword.value)
     if (res.code === 0) {
       consultants.value = res.data
+      void warmupCounselorBookable(res.data || [])
     } else {
       ElMessage.error(res.msg || '获取咨询师列表失败')
     }
@@ -72,6 +75,47 @@ async function fetchConsultants() {
     ElMessage.error(e?.message || '网络错误')
   } finally {
     loading.value = false
+  }
+}
+
+function isCounselorOffline(c: Counselor) {
+  return counselorBookableMap.value[c.userId] === false
+}
+
+async function checkCounselorBookable(counselorUserId: number) {
+  if (counselorBookableLoadingMap.value[counselorUserId]) return
+  counselorBookableLoadingMap.value[counselorUserId] = true
+  try {
+    const startDate = dayjs().startOf('day').valueOf()
+    const endDate = dayjs().add(30, 'day').endOf('day').valueOf()
+    const res = await listScheduleSlots({ counselorUserId, startDate, endDate })
+    if (res.code !== 0) {
+      counselorBookableMap.value[counselorUserId] = null
+      return
+    }
+
+    const now = dayjs()
+    const hasSlots = (res.data || [])
+      .filter(s => s.status === 'AVAILABLE')
+      .some(s => dayjs(`${s.date} ${normalizeTimeStr(s.startTime)}`).isAfter(now))
+
+    counselorBookableMap.value[counselorUserId] = hasSlots
+  } catch {
+    counselorBookableMap.value[counselorUserId] = null
+  } finally {
+    counselorBookableLoadingMap.value[counselorUserId] = false
+  }
+}
+
+async function warmupCounselorBookable(list: Counselor[]) {
+  for (const c of list) {
+    if (counselorBookableMap.value[c.userId] === undefined) {
+      counselorBookableMap.value[c.userId] = null
+    }
+  }
+  for (const c of list) {
+    if (counselorBookableMap.value[c.userId] !== null) continue
+    await checkCounselorBookable(c.userId)
   }
 }
 
@@ -103,6 +147,7 @@ function applySlot(slot: ScheduleSlot) {
 }
 
 async function openBookingDialog(c: Counselor) {
+  if (isCounselorOffline(c)) return
   selectedConsultant.value = c
   bookingForm.counselorUserId = c.userId
   bookingForm.slotId = 0
@@ -126,14 +171,17 @@ async function openBookingDialog(c: Counselor) {
 
       availableSlots.value = slots
 
+      counselorBookableMap.value[c.userId] = slots.length > 0
       if (slots.length > 0) {
         bookingForm.slotId = slots[0].id
         applySlot(slots[0])
       }
     } else {
+      counselorBookableMap.value[c.userId] = null
       ElMessage.error(res.msg || '加载可预约时段失败')
     }
   } catch (e: any) {
+    counselorBookableMap.value[c.userId] = null
     ElMessage.error(e?.message || '网络错误')
   } finally {
     slotsLoading.value = false
@@ -253,6 +301,7 @@ onMounted(() => {
             <div class="name-row">
               <span class="name">{{ c.realName }}</span>
               <el-tag size="small" effect="plain">{{ c.title }}</el-tag>
+              <el-tag v-if="isCounselorOffline(c)" size="small" type="info" effect="plain">已下线</el-tag>
             </div>
             <div class="expertise">擅长：{{ c.expertise }}</div>
           </div>
@@ -260,7 +309,16 @@ onMounted(() => {
         <div class="intro">{{ c.intro }}</div>
         <div class="actions">
           <el-button type="success" plain size="small" @click="openConsultDialog(c)">发起咨询</el-button>
-          <el-button type="primary" plain size="small" @click="openBookingDialog(c)">预约咨询</el-button>
+          <el-button
+            type="primary"
+            plain
+            size="small"
+            :loading="counselorBookableLoadingMap[c.userId]"
+            :disabled="isCounselorOffline(c)"
+            @click="openBookingDialog(c)"
+          >
+            {{ isCounselorOffline(c) ? '已下线' : '预约咨询' }}
+          </el-button>
         </div>
       </el-card>
     </div>

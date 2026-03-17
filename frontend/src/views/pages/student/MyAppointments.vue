@@ -35,6 +35,7 @@ async function handleCancel(id: number) {
     if (res.code === 0) {
       ElMessage.success('已取消预约')
       fetchAppointments()
+      window.dispatchEvent(new Event('mh:notifications-updated'))
     } else {
       ElMessage.error(res.msg || '取消失败')
     }
