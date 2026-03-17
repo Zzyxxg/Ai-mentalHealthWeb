@@ -45,6 +45,12 @@
         ORDER BY update_time DESC
     </select>
 
+    <select id="selectAll" resultMap="ThreadResultMap">
+        SELECT <include refid="ThreadColumns"/>
+        FROM consult_thread
+        ORDER BY update_time DESC
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO consult_thread (student_user_id, counselor_user_id, status, topic, hidden, hidden_reason)
         VALUES (#{studentUserId}, #{counselorUserId}, #{status}, #{topic}, #{hidden}, #{hiddenReason})

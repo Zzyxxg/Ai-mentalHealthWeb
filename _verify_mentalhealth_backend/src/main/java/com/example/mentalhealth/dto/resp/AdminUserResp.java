@@ -1,19 +1,13 @@
-package com.example.mentalhealth.entity;
+package com.example.mentalhealth.dto.resp;
 
-import java.time.LocalDateTime;
-
-public class User {
-
+public class AdminUserResp {
     private Long id;
     private String username;
-    private String passwordHash;
     private String role;
     private String status;
     private String nickname;
     private String avatarUrl;
-    private Integer deleted;
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
+    private Long createTime;
 
     public Long getId() {
         return id;
@@ -29,14 +23,6 @@ public class User {
 
     public void setUsername(String username) {
         this.username = username;
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
     }
 
     public String getRole() {
@@ -71,27 +57,12 @@ public class User {
         this.avatarUrl = avatarUrl;
     }
 
-    public Integer getDeleted() {
-        return deleted;
-    }
-
-    public void setDeleted(Integer deleted) {
-        this.deleted = deleted;
-    }
-
-    public LocalDateTime getCreateTime() {
+    public Long getCreateTime() {
         return createTime;
     }
 
-    public void setCreateTime(LocalDateTime createTime) {
+    public void setCreateTime(Long createTime) {
         this.createTime = createTime;
     }
-
-    public LocalDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(LocalDateTime updateTime) {
-        this.updateTime = updateTime;
-    }
 }
+

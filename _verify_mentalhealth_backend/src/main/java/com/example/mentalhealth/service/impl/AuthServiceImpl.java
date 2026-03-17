@@ -31,6 +31,9 @@ public class AuthServiceImpl implements AuthService {
         if (user == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "用户名或密码错误");
         }
+        if ("DISABLED".equalsIgnoreCase(user.getStatus())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "账号已被禁用");
+        }
 
         String token = jwtTokenProvider.createToken(user.getId(), user.getUsername(), user.getRole());
         return new LoginResp(token, "Bearer", 86400L); // 假设 24h

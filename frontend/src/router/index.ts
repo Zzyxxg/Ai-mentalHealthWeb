@@ -34,6 +34,10 @@ export const router = createRouter({
         { path: 'consultations', name: 'student-consultations', component: () => import('../views/pages/student/ConsultationList.vue') },
         { path: 'consultations/:id', name: 'student-consultation-detail', component: () => import('../views/pages/student/ConsultationDetail.vue') },
         { path: 'notifications', name: 'student-notifications', component: () => import('../views/pages/common/NotificationList.vue') },
+        { path: 'assessments', name: 'student-assessment-home', component: () => import('../views/pages/student/AssessmentHome.vue') },
+        { path: 'assessments/history', name: 'student-assessment-history', component: () => import('../views/pages/student/AssessmentHistory.vue') },
+        { path: 'assessments/:type', name: 'student-assessment-form', component: () => import('../views/pages/student/AssessmentForm.vue') },
+        { path: 'assessments/result', name: 'student-assessment-result', component: () => import('../views/pages/student/AssessmentResult.vue') },
       ],
     },
     {
@@ -55,6 +59,9 @@ export const router = createRouter({
       meta: { auth: true, roles: ['ADMIN'] },
       children: [
         { path: '', name: 'admin-home', component: () => import('../views/pages/admin/AdminHome.vue') },
+        { path: 'users', name: 'admin-users', component: () => import('../views/pages/admin/AdminUsers.vue') },
+        { path: 'appointments', name: 'admin-appointments', component: () => import('../views/pages/admin/AdminAppointments.vue') },
+        { path: 'stats', name: 'admin-stats', component: () => import('../views/pages/admin/AdminStats.vue') },
         { path: 'notifications', name: 'admin-notifications', component: () => import('../views/pages/common/NotificationList.vue') },
       ],
     },

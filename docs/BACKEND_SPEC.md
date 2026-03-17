@@ -187,6 +187,22 @@
 - suggestion
 - createTime
 
+## 8. 测评（Assessment）接口口径（MVP）
+
+### 8.1 GET `/api/v1/assessments/scales`
+- 返回 PHQ9 / GAD7 的列表（含 type/name）
+
+### 8.2 GET `/api/v1/assessments/scales/{type}`
+- 返回量表结构（题目 + 选项分值）
+
+### 8.3 POST `/api/v1/assessments`（学生）
+- **请求**：`{ scaleType: "PHQ9" | "GAD7", answers: number[] }`（answers 分值范围 0~3）
+- **返回**：`AssessmentResp`（含 totalScore/level/suggestion）
+
+### 8.4 GET `/api/v1/assessments/my`（分页）
+- **查询参数**：pageNum/pageSize/scaleType?
+- **返回**：`PageResp<AssessmentResp>`
+
 ### 4.9 Notification（站内通知）
 - id
 - receiverUserId
@@ -209,6 +225,30 @@
 - **规则**：仅能标记自己的通知
 
 ### 7.3 POST `/api/v1/notifications/read-all` 全部标记已读
+
+## 9. 管理端（Admin）接口口径（MVP）
+
+### 9.1 GET `/api/v1/admin/users`
+- 查询：pageNum/pageSize/role?/keyword?
+- 返回：`PageResp<AdminUserResp>`
+
+### 9.2 PATCH `/api/v1/admin/users/{id}/status`
+- 请求：`{ status: "ENABLED" | "DISABLED" }`
+
+### 9.3 POST `/api/v1/admin/users/{id}/reset-password`
+- 请求：`{ newPassword: string }`
+
+### 9.4 GET `/api/v1/admin/appointments`
+- 查询：pageNum/pageSize/status?
+
+### 9.5 GET `/api/v1/admin/consult-threads`
+- 查询：pageNum/pageSize
+
+### 9.6 GET `/api/v1/admin/assessments`
+- 查询：pageNum/pageSize/scaleType?
+
+### 9.7 GET `/api/v1/admin/stats`
+- 查询：days（默认30）
 
 ### 4.10 AuditLog（审计日志）
 - id

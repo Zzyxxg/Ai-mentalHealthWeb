@@ -14,6 +14,8 @@ public interface ConsultThreadMapper {
 
     List<ConsultThread> selectByCounselor(@Param("counselorUserId") Long counselorUserId, @Param("status") String status);
 
+    List<ConsultThread> selectAll();
+
     int insert(ConsultThread thread);
 
     int updateStatus(@Param("id") Long id, @Param("status") String status);
