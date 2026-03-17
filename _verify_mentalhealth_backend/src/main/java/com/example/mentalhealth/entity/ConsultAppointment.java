@@ -8,6 +8,7 @@ public class ConsultAppointment {
     private Long id;
     private Long userId;
     private Long counselorUserId;
+    private Long slotId;
     private LocalDateTime startTime;
     private Integer durationMinutes;
     private AppointmentStatus status;
@@ -39,6 +40,14 @@ public class ConsultAppointment {
 
     public void setCounselorUserId(Long counselorUserId) {
         this.counselorUserId = counselorUserId;
+    }
+
+    public Long getSlotId() {
+        return slotId;
+    }
+
+    public void setSlotId(Long slotId) {
+        this.slotId = slotId;
     }
 
     public LocalDateTime getStartTime() {

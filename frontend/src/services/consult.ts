@@ -16,10 +16,20 @@ export interface Appointment {
   id: number
   userId: number
   counselorUserId: number
+  slotId?: number | null
   startTime: number
   durationMinutes: number
   status: string
   note: string
+}
+
+export interface ScheduleSlot {
+  id: number
+  counselorUserId: number
+  date: string // yyyy-MM-dd
+  startTime: string // HH:mm:ss or HH:mm
+  endTime: string // HH:mm:ss or HH:mm
+  status: 'AVAILABLE' | 'OCCUPIED' | 'UNAVAILABLE'
 }
 
 export interface ConsultThread {
@@ -132,5 +142,35 @@ export async function listConsultMessages(threadId: number) {
 
 export async function sendConsultMessage(data: SendMessageReq) {
   const resp: AxiosResponse<ApiResult<ConsultMessage>> = await http.post('/api/v1/consult-messages', data)
+  return resp.data
+}
+
+export async function finishConsultThread(threadId: number) {
+  const resp: AxiosResponse<ApiResult<void>> = await http.patch(`/api/v1/consult-threads/${threadId}/close`)
+  return resp.data
+}
+
+export async function createScheduleSlots(data: Array<{ date: string; startTime: string; endTime: string }>) {
+  const resp: AxiosResponse<ApiResult<void>> = await http.post('/api/v1/schedule-slots', data)
+  return resp.data
+}
+
+export async function listScheduleSlots(params: { counselorUserId?: number; startDate: number; endDate: number }) {
+  const resp: AxiosResponse<ApiResult<ScheduleSlot[]>> = await http.get('/api/v1/schedule-slots', { params })
+  return resp.data
+}
+
+export async function updateScheduleSlotStatus(slotId: number, status: 'AVAILABLE' | 'UNAVAILABLE') {
+  const resp: AxiosResponse<ApiResult<void>> = await http.patch(`/api/v1/schedule-slots/${slotId}`, { status })
+  return resp.data
+}
+
+export async function deleteScheduleSlot(slotId: number) {
+  const resp: AxiosResponse<ApiResult<void>> = await http.patch(`/api/v1/schedule-slots/${slotId}/delete`)
+  return resp.data
+}
+
+export async function completeAppointment(id: number, note?: string) {
+  const resp: AxiosResponse<ApiResult<Appointment>> = await http.patch(`/api/v1/consult-appointments/${id}`, { action: 'COMPLETE', note })
   return resp.data
 }

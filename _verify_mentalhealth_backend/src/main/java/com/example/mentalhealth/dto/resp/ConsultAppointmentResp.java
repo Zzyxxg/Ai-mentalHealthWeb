@@ -5,15 +5,17 @@ public class ConsultAppointmentResp {
     private Long id;
     private Long userId;
     private Long counselorUserId;
+    private Long slotId;
     private Long startTime;
     private Integer durationMinutes;
     private String status;
     private String note;
 
-    public ConsultAppointmentResp(Long id, Long userId, Long counselorUserId, Long startTime, Integer durationMinutes, String status, String note) {
+    public ConsultAppointmentResp(Long id, Long userId, Long counselorUserId, Long slotId, Long startTime, Integer durationMinutes, String status, String note) {
         this.id = id;
         this.userId = userId;
         this.counselorUserId = counselorUserId;
+        this.slotId = slotId;
         this.startTime = startTime;
         this.durationMinutes = durationMinutes;
         this.status = status;
@@ -42,6 +44,14 @@ public class ConsultAppointmentResp {
 
     public void setCounselorUserId(Long counselorUserId) {
         this.counselorUserId = counselorUserId;
+    }
+
+    public Long getSlotId() {
+        return slotId;
+    }
+
+    public void setSlotId(Long slotId) {
+        this.slotId = slotId;
     }
 
     public Long getStartTime() {

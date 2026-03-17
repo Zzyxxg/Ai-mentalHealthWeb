@@ -6,29 +6,41 @@ import com.example.mentalhealth.common.PageResp;
 import com.example.mentalhealth.dto.req.ConsultAppointmentCreateReq;
 import com.example.mentalhealth.dto.req.ConsultMessageCreateReq;
 import com.example.mentalhealth.dto.req.ConsultThreadCreateReq;
+import com.example.mentalhealth.dto.req.ScheduleSlotCreateReq;
 import com.example.mentalhealth.dto.resp.ConsultAppointmentResp;
 import com.example.mentalhealth.dto.resp.ConsultMessageResp;
 import com.example.mentalhealth.dto.resp.ConsultThreadResp;
 import com.example.mentalhealth.dto.resp.CounselorResp;
+import com.example.mentalhealth.dto.resp.ScheduleSlotResp;
 import com.example.mentalhealth.entity.ConsultAppointment;
 import com.example.mentalhealth.entity.ConsultMessage;
 import com.example.mentalhealth.entity.ConsultThread;
 import com.example.mentalhealth.entity.CounselorProfile;
+import com.example.mentalhealth.entity.ScheduleSlot;
 import com.example.mentalhealth.enums.AppointmentStatus;
 import com.example.mentalhealth.enums.ConsultThreadStatus;
+import com.example.mentalhealth.enums.NotificationType;
+import com.example.mentalhealth.enums.ScheduleSlotStatus;
 import com.example.mentalhealth.mapper.ConsultAppointmentMapper;
 import com.example.mentalhealth.mapper.ConsultMessageMapper;
 import com.example.mentalhealth.mapper.ConsultThreadMapper;
 import com.example.mentalhealth.mapper.CounselorProfileMapper;
+import com.example.mentalhealth.mapper.NotificationMapper;
+import com.example.mentalhealth.mapper.ScheduleSlotMapper;
 import com.example.mentalhealth.service.ConsultService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.redisson.api.RLock;
@@ -50,6 +62,8 @@ public class ConsultServiceImpl implements ConsultService {
     private final ConsultAppointmentMapper consultAppointmentMapper;
     private final ConsultThreadMapper consultThreadMapper;
     private final ConsultMessageMapper consultMessageMapper;
+    private final ScheduleSlotMapper scheduleSlotMapper;
+    private final NotificationMapper notificationMapper;
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedissonClient redissonClient;
 
@@ -57,12 +71,16 @@ public class ConsultServiceImpl implements ConsultService {
                               ConsultAppointmentMapper consultAppointmentMapper,
                               ConsultThreadMapper consultThreadMapper,
                               ConsultMessageMapper consultMessageMapper,
+                              ScheduleSlotMapper scheduleSlotMapper,
+                              NotificationMapper notificationMapper,
                               RedisTemplate<String, Object> redisTemplate,
                               RedissonClient redissonClient) {
         this.counselorProfileMapper = counselorProfileMapper;
         this.consultAppointmentMapper = consultAppointmentMapper;
         this.consultThreadMapper = consultThreadMapper;
         this.consultMessageMapper = consultMessageMapper;
+        this.scheduleSlotMapper = scheduleSlotMapper;
+        this.notificationMapper = notificationMapper;
         this.redisTemplate = redisTemplate;
         this.redissonClient = redissonClient;
     }
@@ -139,6 +157,9 @@ public class ConsultServiceImpl implements ConsultService {
         if (startTime.isBefore(LocalDateTime.now())) {
             throw new BizException(ErrorCode.PARAM_ERROR, "开始时间必须在未来");
         }
+        LocalDate slotDate = startTime.toLocalDate();
+        LocalTime slotStartTime = startTime.toLocalTime();
+        LocalTime slotEndTime = slotStartTime.plusMinutes(req.getDurationMinutes());
 
         String normalizedKey = idempotencyKey == null ? null : idempotencyKey.trim();
         if (normalizedKey != null && !normalizedKey.isEmpty()) {
@@ -149,7 +170,7 @@ public class ConsultServiceImpl implements ConsultService {
             }
         }
 
-        String lockKey = "mh:lock:consult:slot:" + req.getCounselorUserId() + ":" + startTime;
+        String lockKey = "mh:lock:consult:slot:" + req.getCounselorUserId() + ":" + slotDate + ":" + slotStartTime + ":" + slotEndTime;
         RLock lock = redissonClient.getLock(lockKey);
         boolean locked;
         try {
@@ -163,12 +184,25 @@ public class ConsultServiceImpl implements ConsultService {
         }
 
         try {
+            ScheduleSlot slot = scheduleSlotMapper.selectByCounselorAndExactTime(req.getCounselorUserId(), slotDate, slotStartTime, slotEndTime);
+            if (slot == null) {
+                throw new BizException(ErrorCode.NOT_FOUND, "该时段未配置或不存在");
+            }
+            if (slot.getStatus() != ScheduleSlotStatus.AVAILABLE) {
+                throw new BizException(ErrorCode.CONFLICT, "该时段不可预约");
+            }
+            int occupied = scheduleSlotMapper.updateStatusIfCurrent(slot.getId(), ScheduleSlotStatus.AVAILABLE.name(), ScheduleSlotStatus.OCCUPIED.name());
+            if (occupied != 1) {
+                throw new BizException(ErrorCode.CONFLICT, "该时段已被占用");
+            }
+
             ConsultAppointment appointment = new ConsultAppointment();
             appointment.setUserId(userId);
             appointment.setCounselorUserId(req.getCounselorUserId());
+            appointment.setSlotId(slot.getId());
             appointment.setStartTime(startTime);
             appointment.setDurationMinutes(req.getDurationMinutes());
-            appointment.setStatus(AppointmentStatus.CREATED);
+            appointment.setStatus(AppointmentStatus.CONFIRMED);
             appointment.setNote(req.getNote());
             appointment.setIdempotencyKey((normalizedKey == null || normalizedKey.isEmpty()) ? null : normalizedKey);
 
@@ -190,6 +224,7 @@ public class ConsultServiceImpl implements ConsultService {
                 redisTemplate.opsForValue().set(redisKey, appointment.getId(), IDEMPOTENCY_TTL_SECONDS, TimeUnit.SECONDS);
             }
             cacheAppointment(appointment);
+            writeAppointmentNotification(userId, appointment.getCounselorUserId(), appointment.getId(), true);
             return toResp(appointment);
         } finally {
             lock.unlock();
@@ -209,16 +244,97 @@ public class ConsultServiceImpl implements ConsultService {
     }
 
     @Override
-    public PageResp<ConsultAppointmentResp> pageAppointments(Long userId, int pageNum, int pageSize, String status) {
+    public PageResp<ConsultAppointmentResp> pageAppointments(Long userId, String role, int pageNum, int pageSize, String status) {
         int pn = Math.max(pageNum, 1);
         int ps = Math.min(Math.max(pageSize, 1), MAX_PAGE_SIZE);
         Integer statusCode = parseStatusCode(status);
 
         PageHelper.startPage(pn, ps);
-        List<ConsultAppointment> list = consultAppointmentMapper.selectByUser(userId, statusCode);
+        List<ConsultAppointment> list;
+        if ("CONSULTANT".equals(role)) {
+            list = consultAppointmentMapper.selectByCounselor(userId, statusCode);
+        } else {
+            // Default to STUDENT view
+            list = consultAppointmentMapper.selectByUser(userId, statusCode);
+        }
+        
         List<ConsultAppointmentResp> respList = list.stream().map(this::toResp).toList();
         PageInfo<ConsultAppointment> pageInfo = new PageInfo<>(list);
         return new PageResp<>(pageInfo.getTotal(), pn, ps, respList);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ConsultAppointmentResp completeAppointment(Long userId, Long appointmentId, String note) {
+        ConsultAppointment appt = consultAppointmentMapper.selectById(appointmentId);
+        if (appt == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "预约不存在");
+        }
+        if (!Objects.equals(appt.getCounselorUserId(), userId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权限操作该预约");
+        }
+        if (appt.getStatus() != AppointmentStatus.CONFIRMED) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "仅确认状态的预约可标记完成");
+        }
+
+        consultAppointmentMapper.updateStatusAndNote(appointmentId, AppointmentStatus.COMPLETED.getCode(), note);
+        redisTemplate.delete("mh:consult:appointment:id:" + appointmentId);
+        ConsultAppointment latest = consultAppointmentMapper.selectById(appointmentId);
+        cacheAppointment(latest);
+        return toResp(latest);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createScheduleSlots(Long counselorUserId, List<ScheduleSlotCreateReq> reqs) {
+        if (reqs == null || reqs.isEmpty()) {
+            return;
+        }
+        
+        List<ScheduleSlot> slots = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (ScheduleSlotCreateReq req : reqs) {
+            String key = req.getDate() + "|" + req.getStartTime() + "|" + req.getEndTime();
+            if (!seen.add(key)) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "存在重复时段: " + key);
+            }
+            if (!req.getEndTime().isAfter(req.getStartTime())) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "结束时间必须晚于开始时间");
+            }
+            ScheduleSlot slot = new ScheduleSlot();
+            slot.setCounselorUserId(counselorUserId);
+            slot.setDate(req.getDate());
+            slot.setStartTime(req.getStartTime());
+            slot.setEndTime(req.getEndTime());
+            slot.setStatus(ScheduleSlotStatus.AVAILABLE);
+            slots.add(slot);
+        }
+        
+        try {
+            scheduleSlotMapper.batchInsert(slots);
+        } catch (DuplicateKeyException e) {
+            throw new BizException(ErrorCode.CONFLICT, "排班时段重复（同一咨询师同一时间段唯一）");
+        }
+    }
+
+    @Override
+    public List<ScheduleSlotResp> listScheduleSlots(Long counselorUserId, Long startDate, Long endDate) {
+        LocalDate start = LocalDate.ofInstant(Instant.ofEpochMilli(startDate), ZoneId.systemDefault());
+        LocalDate end = LocalDate.ofInstant(Instant.ofEpochMilli(endDate), ZoneId.systemDefault());
+        
+        List<ScheduleSlot> slots = scheduleSlotMapper.selectByCounselorAndDateRange(counselorUserId, start, end);
+        return slots.stream().map(this::toResp).toList();
+    }
+
+    private ScheduleSlotResp toResp(ScheduleSlot slot) {
+        ScheduleSlotResp resp = new ScheduleSlotResp();
+        resp.setId(slot.getId());
+        resp.setCounselorUserId(slot.getCounselorUserId());
+        resp.setDate(slot.getDate());
+        resp.setStartTime(slot.getStartTime());
+        resp.setEndTime(slot.getEndTime());
+        resp.setStatus(slot.getStatus());
+        return resp;
     }
 
     @Override
@@ -234,8 +350,15 @@ public class ConsultServiceImpl implements ConsultService {
         if (appt.getStatus() == AppointmentStatus.CANCELED) {
             return toResp(appt);
         }
+        if (appt.getStatus() == AppointmentStatus.COMPLETED) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "已完成的预约不可取消");
+        }
 
         consultAppointmentMapper.updateStatus(appointmentId, userId, AppointmentStatus.CANCELED.getCode());
+        if (appt.getSlotId() != null) {
+            scheduleSlotMapper.updateStatusIfCurrent(appt.getSlotId(), ScheduleSlotStatus.OCCUPIED.name(), ScheduleSlotStatus.AVAILABLE.name());
+        }
+        writeAppointmentNotification(appt.getUserId(), appt.getCounselorUserId(), appt.getId(), false);
         redisTemplate.delete("mh:consult:appointment:id:" + appointmentId);
         ConsultAppointment latest = consultAppointmentMapper.selectById(appointmentId);
         if (latest == null) {
@@ -243,6 +366,55 @@ public class ConsultServiceImpl implements ConsultService {
         }
         cacheAppointment(latest);
         return toResp(latest);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateScheduleSlotStatus(Long counselorUserId, Long slotId, String status) {
+        if (status == null || status.isBlank()) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "status不能为空");
+        }
+        String target = status.trim().toUpperCase();
+        if (!ScheduleSlotStatus.AVAILABLE.name().equals(target) && !ScheduleSlotStatus.UNAVAILABLE.name().equals(target)) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "status仅支持 AVAILABLE/UNAVAILABLE");
+        }
+
+        ScheduleSlot slot = scheduleSlotMapper.selectById(slotId);
+        if (slot == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "排班时段不存在");
+        }
+        if (!Objects.equals(slot.getCounselorUserId(), counselorUserId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权限操作该排班时段");
+        }
+        if (slot.getStatus() == ScheduleSlotStatus.OCCUPIED) {
+            throw new BizException(ErrorCode.CONFLICT, "已占用时段不可手动修改状态");
+        }
+        LocalDateTime slotStart = LocalDateTime.of(slot.getDate(), slot.getStartTime());
+        if (slotStart.isBefore(LocalDateTime.now())) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "仅允许修改未来时段");
+        }
+
+        scheduleSlotMapper.updateStatus(slotId, target);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteScheduleSlot(Long counselorUserId, Long slotId) {
+        ScheduleSlot slot = scheduleSlotMapper.selectById(slotId);
+        if (slot == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "排班时段不存在");
+        }
+        if (!Objects.equals(slot.getCounselorUserId(), counselorUserId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权限操作该排班时段");
+        }
+        if (slot.getStatus() == ScheduleSlotStatus.OCCUPIED) {
+            throw new BizException(ErrorCode.CONFLICT, "已占用时段不可删除");
+        }
+        LocalDateTime slotStart = LocalDateTime.of(slot.getDate(), slot.getStartTime());
+        if (slotStart.isBefore(LocalDateTime.now())) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "仅允许删除未来时段");
+        }
+        scheduleSlotMapper.deleteById(slotId);
     }
 
     @Override
@@ -356,9 +528,57 @@ public class ConsultServiceImpl implements ConsultService {
         // 如果是咨询师回复，且状态是 UNPROCESSED，则改为 PROCESSING
         if ("CONSULTANT".equals(role) && thread.getStatus() == ConsultThreadStatus.UNPROCESSED) {
             consultThreadMapper.updateStatus(thread.getId(), ConsultThreadStatus.PROCESSING.name());
+            writeConsultantRepliedNotification(thread.getStudentUserId(), thread.getId());
         }
 
         return toResp(message);
+    }
+
+    private void writeAppointmentNotification(Long studentUserId, Long counselorUserId, Long appointmentId, boolean created) {
+        String type = created ? NotificationType.APPOINTMENT_CREATED.name() : NotificationType.APPOINTMENT_CANCELED.name();
+        String title = created ? "预约成功" : "预约已取消";
+        String content = created ? ("你的预约已确认（ID=" + appointmentId + "）") : ("你的预约已取消（ID=" + appointmentId + "）");
+
+        com.example.mentalhealth.entity.Notification n1 = new com.example.mentalhealth.entity.Notification();
+        n1.setReceiverUserId(studentUserId);
+        n1.setType(NotificationType.valueOf(type));
+        n1.setTitle(title);
+        n1.setContent(content);
+        n1.setReadFlag(false);
+        notificationMapper.insert(n1);
+
+        com.example.mentalhealth.entity.Notification n2 = new com.example.mentalhealth.entity.Notification();
+        n2.setReceiverUserId(counselorUserId);
+        n2.setType(NotificationType.valueOf(type));
+        n2.setTitle(title);
+        n2.setContent((created ? "有新的预约（" : "预约已取消（") + "ID=" + appointmentId + "）");
+        n2.setReadFlag(false);
+        notificationMapper.insert(n2);
+    }
+
+    private void writeConsultantRepliedNotification(Long studentUserId, Long threadId) {
+        com.example.mentalhealth.entity.Notification n = new com.example.mentalhealth.entity.Notification();
+        n.setReceiverUserId(studentUserId);
+        n.setType(NotificationType.CONSULTANT_REPLIED);
+        n.setTitle("咨询师已回复");
+        n.setContent("你的咨询已收到回复（threadId=" + threadId + "）");
+        n.setReadFlag(false);
+        notificationMapper.insert(n);
+    }
+
+    @Override
+    public void closeThread(Long userId, Long threadId) {
+        ConsultThread thread = consultThreadMapper.selectById(threadId);
+        if (thread == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "咨询会话不存在");
+        }
+        if (!Objects.equals(thread.getCounselorUserId(), userId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权限结束该会话");
+        }
+        if (thread.getStatus() == ConsultThreadStatus.CLOSED) {
+            return;
+        }
+        consultThreadMapper.updateStatus(threadId, ConsultThreadStatus.CLOSED.name());
     }
 
     @Override
@@ -409,6 +629,7 @@ public class ConsultServiceImpl implements ConsultService {
                 appt.getId(),
                 appt.getUserId(),
                 appt.getCounselorUserId(),
+                appt.getSlotId(),
                 appt.getStartTime() == null ? null : appt.getStartTime().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 appt.getDurationMinutes(),
                 appt.getStatus().name(),

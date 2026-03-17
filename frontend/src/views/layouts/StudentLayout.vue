@@ -18,6 +18,7 @@ async function onLogout() {
         <el-menu-item index="/student">寻找咨询师</el-menu-item>
         <el-menu-item index="/student/appointments">我的预约</el-menu-item>
         <el-menu-item index="/student/consultations">我的咨询</el-menu-item>
+        <el-menu-item index="/student/notifications">通知中心</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

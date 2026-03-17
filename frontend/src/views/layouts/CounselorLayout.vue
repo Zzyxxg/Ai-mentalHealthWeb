@@ -15,7 +15,11 @@ async function onLogout() {
     <el-aside width="220px" class="aside">
       <div class="brand">心理健康平台</div>
       <el-menu router :default-active="$route.path" class="menu">
-        <el-menu-item index="/counselor">首页</el-menu-item>
+        <el-menu-item index="/counselor">工作台</el-menu-item>
+        <el-menu-item index="/counselor/schedule">排班管理</el-menu-item>
+        <el-menu-item index="/counselor/appointments">预约管理</el-menu-item>
+        <el-menu-item index="/counselor/consultations">咨询管理</el-menu-item>
+        <el-menu-item index="/counselor/notifications">通知中心</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

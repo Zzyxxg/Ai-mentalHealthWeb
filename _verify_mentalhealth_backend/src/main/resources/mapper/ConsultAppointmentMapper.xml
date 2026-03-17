@@ -8,6 +8,7 @@
         <id column="id" property="id"/>
         <result column="user_id" property="userId"/>
         <result column="counselor_user_id" property="counselorUserId"/>
+        <result column="slot_id" property="slotId"/>
         <result column="start_time" property="startTime"/>
         <result column="duration_minutes" property="durationMinutes"/>
         <result column="status" property="status" typeHandler="com.example.mentalhealth.mapper.typehandler.AppointmentStatusTypeHandler"/>
@@ -19,7 +20,7 @@
     </resultMap>
 
     <sql id="AppointmentColumns">
-        id, user_id, counselor_user_id, start_time, duration_minutes, status, note, idempotency_key, deleted, create_time, update_time
+        id, user_id, counselor_user_id, slot_id, start_time, duration_minutes, status, note, idempotency_key, deleted, create_time, update_time
     </sql>
 
     <select id="selectById" resultMap="AppointmentResultMap">
@@ -49,9 +50,22 @@
         ORDER BY id DESC
     </select>
 
+    <select id="selectByCounselor" resultMap="AppointmentResultMap">
+        SELECT <include refid="AppointmentColumns"/>
+        FROM consult_appointment
+        <where>
+            counselor_user_id = #{counselorUserId}
+            AND deleted = 0
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO consult_appointment (user_id, counselor_user_id, start_time, duration_minutes, status, note, idempotency_key, deleted)
-        VALUES (#{userId}, #{counselorUserId}, #{startTime}, #{durationMinutes},
+        INSERT INTO consult_appointment (user_id, counselor_user_id, slot_id, start_time, duration_minutes, status, note, idempotency_key, deleted)
+        VALUES (#{userId}, #{counselorUserId}, #{slotId}, #{startTime}, #{durationMinutes},
         #{status, typeHandler=com.example.mentalhealth.mapper.typehandler.AppointmentStatusTypeHandler},
         #{note}, #{idempotencyKey}, 0)
     </insert>
@@ -60,5 +74,11 @@
         UPDATE consult_appointment
         SET status = #{status}, update_time = CURRENT_TIMESTAMP(3)
         WHERE id = #{id} AND user_id = #{userId} AND deleted = 0
+    </update>
+
+    <update id="updateStatusAndNote">
+        UPDATE consult_appointment
+        SET status = #{status, typeHandler=com.example.mentalhealth.mapper.typehandler.AppointmentStatusTypeHandler}, note = #{note}, update_time = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id} AND deleted = 0
     </update>
 </mapper>
