@@ -1,28 +1,26 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, nextTick } from 'vue'
+import { onMounted, ref, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getConsultThread, listConsultMessages, sendConsultMessage, type ConsultThread, type ConsultMessage } from '../../../services/consult'
+import { getConsultThread, sendConsultMessage, type ConsultThread, type ConsultMessage } from '../../../services/consult'
+import { formatDateTime } from '../../../utils/format'
 import { ElMessage } from 'element-plus'
-import dayjs from 'dayjs'
+import { Warning } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const threadId = Number(route.params.id)
 
+const threadId = Number(route.params.id)
 const loading = ref(false)
 const thread = ref<ConsultThread | null>(null)
 const messages = ref<ConsultMessage[]>([])
 const messageContent = ref('')
 const sending = ref(false)
-const messageListRef = ref<HTMLElement | null>(null)
+const messageListRef = ref<HTMLElement>()
 
-const isMyMessage = (msg: ConsultMessage) => {
-  return msg.senderRole === authStore.role
-}
-
-async function fetchThread() {
+async function fetchDetail() {
+  loading.value = true
   try {
     const res = await getConsultThread(threadId)
     if (res.code === 0) {
@@ -30,20 +28,31 @@ async function fetchThread() {
       messages.value = res.data.messages || []
       scrollToBottom()
     } else {
-      ElMessage.error(res.msg || '获取咨询详情失败')
+      ElMessage.error(res.msg || '获取详情失败')
     }
   } catch (e: any) {
     ElMessage.error(e?.message || '网络错误')
+  } finally {
+    loading.value = false
   }
 }
 
 async function handleSend() {
-  if (!messageContent.value.trim()) return
+  const content = messageContent.value.trim()
+  if (!content) {
+    ElMessage.warning('请输入消息内容')
+    return
+  }
+  if (content.length > 1000) {
+    ElMessage.warning('消息长度不能超过 1000 个字符')
+    return
+  }
+
   sending.value = true
   try {
     const res = await sendConsultMessage({ 
       threadId: threadId,
-      content: messageContent.value 
+      content: content
     })
     if (res.code === 0) {
       messages.value.push(res.data)
@@ -67,12 +76,12 @@ function scrollToBottom() {
   })
 }
 
-function formatTime(time: number) {
-  return dayjs(time).format('MM-DD HH:mm')
+function isMyMessage(msg: ConsultMessage) {
+  return msg.senderRole === 'STUDENT'
 }
 
 onMounted(() => {
-  fetchThread()
+  fetchDetail()
 })
 </script>
 
@@ -100,9 +109,16 @@ onMounted(() => {
           <div class="message-content">
             <div class="sender-info">
               <span class="sender-name">{{ msg.senderRole === 'STUDENT' ? '我' : (thread?.counselorName || '咨询师') }}</span>
-              <span class="time">{{ formatTime(msg.createTime) }}</span>
+              <span class="time">{{ formatDateTime(msg.createTime) }}</span>
             </div>
-            <div class="bubble">{{ msg.content }}</div>
+            <div class="bubble" :class="{ 'is-hidden': msg.hidden }">
+              <template v-if="!msg.hidden">
+                {{ msg.content }}
+              </template>
+              <template v-else>
+                <el-icon><Warning /></el-icon> 该内容已因违规被下架
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -208,6 +224,16 @@ onMounted(() => {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.bubble.is-hidden {
+  background-color: #f4f4f5;
+  color: #909399;
+  font-style: italic;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .my-message .bubble {

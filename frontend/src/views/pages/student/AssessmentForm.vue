@@ -10,7 +10,7 @@ const type = computed(() => String(route.params.type || ''))
 
 const loading = ref(false)
 const scale = ref<AssessmentScale | null>(null)
-const answers = ref<number[]>([])
+const answers = ref<(number | null)[]>([])
 
 async function load() {
   loading.value = true
@@ -18,7 +18,7 @@ async function load() {
     const res = await getScale(type.value)
     if (res.code === 0) {
       scale.value = res.data
-      answers.value = new Array(res.data.questions.length).fill(0)
+      answers.value = new Array(res.data.questions.length).fill(null)
     } else {
       ElMessage.error(res.msg || '加载量表失败')
     }
@@ -29,7 +29,14 @@ async function load() {
 
 async function onSubmit() {
   if (!scale.value) return
-  const res = await submitAssessment({ scaleType: scale.value.type, answers: answers.value })
+  
+  const unansweredIndex = answers.value.findIndex(a => a === null)
+  if (unansweredIndex !== -1) {
+    ElMessage.warning(`第 ${unansweredIndex + 1} 题尚未回答`)
+    return
+  }
+
+  const res = await submitAssessment({ scaleType: scale.value.type, answers: answers.value as number[] })
   if (res.code === 0) {
     router.replace({ name: 'student-assessment-result', query: { id: String(res.data.id) }, state: { result: res.data } as any })
   } else {

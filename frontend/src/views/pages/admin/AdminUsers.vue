@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminListUsers, adminPatchUserStatus, adminResetPassword, type AdminUser } from '../../../services/admin'
+import { formatRole, formatUserStatus } from '../../../utils/format'
 
 const loading = ref(false)
 const pageNum = ref(1)
@@ -39,16 +40,26 @@ async function toggleStatus(u: AdminUser) {
 }
 
 async function onResetPassword(u: AdminUser) {
-  const { value } = await ElMessageBox.prompt('输入新密码', '重置密码', {
-    inputType: 'password',
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-  })
-  const res = await adminResetPassword(u.id, value)
-  if (res.code === 0) {
-    ElMessage.success('已重置')
-  } else {
-    ElMessage.error(res.msg || '重置失败')
+  try {
+    const { value } = await ElMessageBox.prompt('输入新密码', '重置密码', {
+      inputType: 'password',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputValidator: (val) => {
+        if (!val || val.length < 6 || val.length > 32) {
+          return '密码长度必须在 6 到 32 个字符之间'
+        }
+        return true
+      }
+    })
+    const res = await adminResetPassword(u.id, value)
+    if (res.code === 0) {
+      ElMessage.success('已重置')
+    } else {
+      ElMessage.error(res.msg || '重置失败')
+    }
+  } catch (e) {
+    // 用户取消操作，不做处理
   }
 }
 
@@ -59,9 +70,9 @@ onMounted(refresh)
   <div class="page">
     <div class="toolbar">
       <el-select v-model="role" placeholder="角色" clearable style="width: 160px">
-        <el-option label="STUDENT" value="STUDENT" />
-        <el-option label="CONSULTANT" value="CONSULTANT" />
-        <el-option label="ADMIN" value="ADMIN" />
+        <el-option label="学生" value="STUDENT" />
+        <el-option label="咨询师" value="CONSULTANT" />
+        <el-option label="管理员" value="ADMIN" />
       </el-select>
       <el-input v-model="keyword" placeholder="搜索 username/nickname" style="width: 240px" clearable />
       <el-button type="primary" @click="refresh" :loading="loading">查询</el-button>
@@ -71,8 +82,18 @@ onMounted(refresh)
       <el-table :data="list" v-loading="loading" style="width: 100%">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" min-width="160" />
-        <el-table-column prop="role" label="角色" width="120" />
-        <el-table-column prop="status" label="状态" width="120" />
+        <el-table-column label="角色" width="120">
+          <template #default="{ row }">
+            {{ formatRole(row.role) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'ENABLED' ? 'success' : 'danger'">
+              {{ formatUserStatus(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="nickname" label="昵称" min-width="140" />
         <el-table-column label="操作" width="260">
           <template #default="{ row }">

@@ -2,8 +2,8 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listConsultThreads, type ConsultThread } from '../../../services/consult'
+import { formatConsultThreadStatus, formatDateTime } from '../../../utils/format'
 import { ElMessage } from 'element-plus'
-import dayjs from 'dayjs'
 
 const router = useRouter()
 const loading = ref(false)
@@ -38,10 +38,6 @@ function goToDetail(id: number) {
   router.push({ name: 'student-consultation-detail', params: { id } })
 }
 
-function formatTime(time: number) {
-  return dayjs(time).format('YYYY-MM-DD HH:mm')
-}
-
 function getStatusTagType(status: string) {
   switch (status) {
     case 'UNPROCESSED':
@@ -52,19 +48,6 @@ function getStatusTagType(status: string) {
       return 'success'
     default:
       return 'info'
-  }
-}
-
-function getStatusText(status: string) {
-  switch (status) {
-    case 'UNPROCESSED':
-      return '未处理'
-    case 'PROCESSING':
-      return '进行中'
-    case 'CLOSED':
-      return '已结束'
-    default:
-      return status
   }
 }
 
@@ -99,10 +82,13 @@ onMounted(() => {
           <div class="title-row">
             <span class="thread-title">{{ thread.topic }}</span>
             <el-tag size="small" :type="getStatusTagType(thread.status)">
-              {{ getStatusText(thread.status) }}
+              {{ formatConsultThreadStatus(thread.status) }}
+            </el-tag>
+            <el-tag v-if="thread.hidden" size="small" type="danger">
+              已下架
             </el-tag>
           </div>
-          <div class="time">{{ formatTime(thread.createTime) }}</div>
+          <div class="time">{{ formatDateTime(thread.createTime) }}</div>
         </div>
         <div class="content-preview">{{ thread.content }}</div>
         <div class="footer" v-if="thread.counselorName">
