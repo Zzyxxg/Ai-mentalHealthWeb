@@ -12,6 +12,10 @@ export interface Counselor {
   intro: string
 }
 
+export interface CounselorPageItem extends Counselor {
+  hasAvailableSlots: boolean
+}
+
 export interface Appointment {
   id: number
   userId: number
@@ -88,6 +92,15 @@ export interface PageResp<T> {
 export async function listConsultants(keyword?: string) {
   const params = keyword ? { keyword } : {}
   const resp: AxiosResponse<ApiResult<Counselor[]>> = await http.get('/api/v1/consultants', { params })
+  return resp.data
+}
+
+export async function pageConsultants(pageNum = 1, pageSize = 10, keyword?: string, startDate?: number, endDate?: number) {
+  const params: Record<string, any> = { pageNum, pageSize }
+  if (keyword) params.keyword = keyword
+  if (startDate !== undefined) params.startDate = startDate
+  if (endDate !== undefined) params.endDate = endDate
+  const resp: AxiosResponse<ApiResult<PageResp<CounselorPageItem>>> = await http.get('/api/v1/consultants/page', { params })
   return resp.data
 }
 

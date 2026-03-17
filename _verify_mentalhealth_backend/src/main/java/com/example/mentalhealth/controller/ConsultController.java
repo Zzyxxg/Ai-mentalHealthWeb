@@ -14,6 +14,7 @@ import com.example.mentalhealth.dto.resp.ConsultAppointmentResp;
 import com.example.mentalhealth.dto.resp.ConsultMessageResp;
 import com.example.mentalhealth.dto.resp.ConsultThreadResp;
 import com.example.mentalhealth.dto.resp.CounselorResp;
+import com.example.mentalhealth.dto.resp.CounselorPageItemResp;
 import com.example.mentalhealth.dto.resp.ScheduleSlotResp;
 import com.example.mentalhealth.security.UserPrincipal;
 import com.example.mentalhealth.service.ConsultService;
@@ -62,6 +63,19 @@ public class ConsultController {
             @Parameter(description = "搜索关键词（姓名/擅长/职称）") @RequestParam(value = "keyword", required = false) String keyword) {
         List<CounselorResp> list = consultService.listConsultants(keyword);
         return ResponseEntity.ok(Result.success(list, TraceIdFilter.currentTraceId()));
+    }
+
+    @Operation(summary = "咨询师列表（分页）", description = "返回分页结果，并附带 hasAvailableSlots 用于前端快速判断是否可预约")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @GetMapping("/consultants/page")
+    public ResponseEntity<Result<PageResp<CounselorPageItemResp>>> pageConsultants(
+            @RequestParam(value = "pageNum", defaultValue = "1") @Min(1) int pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") @Min(1) @Max(100) int pageSize,
+            @Parameter(description = "搜索关键词（姓名/擅长/职称）") @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "startDate", required = false) Long startDate,
+            @RequestParam(value = "endDate", required = false) Long endDate) {
+        PageResp<CounselorPageItemResp> page = consultService.pageConsultants(keyword, pageNum, pageSize, startDate, endDate);
+        return ResponseEntity.ok(Result.success(page, TraceIdFilter.currentTraceId()));
     }
 
     @Operation(summary = "咨询师详情")

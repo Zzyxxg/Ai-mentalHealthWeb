@@ -6,6 +6,8 @@ import type { PageResp } from './consult'
 export interface NotificationItem {
   id: number
   receiverUserId: number
+  studentName?: string | null
+  counselorName?: string | null
   type: string
   title: string
   content: string
@@ -29,4 +31,3 @@ export async function readAllNotifications() {
   const resp: AxiosResponse<ApiResult<void>> = await http.post('/api/v1/notifications/read-all')
   return resp.data
 }
-

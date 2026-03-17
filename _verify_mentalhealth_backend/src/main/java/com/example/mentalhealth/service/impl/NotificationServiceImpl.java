@@ -49,6 +49,8 @@ public class NotificationServiceImpl implements NotificationService {
         NotificationResp resp = new NotificationResp();
         resp.setId(n.getId());
         resp.setReceiverUserId(n.getReceiverUserId());
+        resp.setStudentName(n.getStudentName());
+        resp.setCounselorName(n.getCounselorName());
         resp.setType(n.getType() == null ? null : n.getType().name());
         resp.setTitle(n.getTitle());
         resp.setContent(n.getContent());
@@ -57,4 +59,3 @@ public class NotificationServiceImpl implements NotificationService {
         return resp;
     }
 }
-

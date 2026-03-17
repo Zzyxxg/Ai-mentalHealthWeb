@@ -102,6 +102,16 @@ onMounted(() => refresh())
     <el-card>
       <el-table :data="list" v-loading="loading" style="width: 100%" @row-click="handleRowClick">
         <el-table-column prop="title" label="标题" min-width="160" />
+        <el-table-column label="用户" width="140">
+          <template #default="{ row }">
+            {{ row.studentName || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="咨询师" width="140">
+          <template #default="{ row }">
+            {{ row.counselorName || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="content" label="内容" min-width="260" />
         <el-table-column label="类型" width="180">
           <template #default="{ row }">

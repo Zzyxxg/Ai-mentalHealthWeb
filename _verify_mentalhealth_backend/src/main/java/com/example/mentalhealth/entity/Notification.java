@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 public class Notification {
     private Long id;
     private Long receiverUserId;
+    private String studentName;
+    private String counselorName;
     private NotificationType type;
     private String title;
     private String content;
@@ -26,6 +28,22 @@ public class Notification {
 
     public void setReceiverUserId(Long receiverUserId) {
         this.receiverUserId = receiverUserId;
+    }
+
+    public String getStudentName() {
+        return studentName;
+    }
+
+    public void setStudentName(String studentName) {
+        this.studentName = studentName;
+    }
+
+    public String getCounselorName() {
+        return counselorName;
+    }
+
+    public void setCounselorName(String counselorName) {
+        this.counselorName = counselorName;
     }
 
     public NotificationType getType() {
@@ -68,4 +86,3 @@ public class Notification {
         this.createTime = createTime;
     }
 }
-

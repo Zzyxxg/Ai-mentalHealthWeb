@@ -3,6 +3,8 @@ package com.example.mentalhealth.dto.resp;
 public class NotificationResp {
     private Long id;
     private Long receiverUserId;
+    private String studentName;
+    private String counselorName;
     private String type;
     private String title;
     private String content;
@@ -23,6 +25,22 @@ public class NotificationResp {
 
     public void setReceiverUserId(Long receiverUserId) {
         this.receiverUserId = receiverUserId;
+    }
+
+    public String getStudentName() {
+        return studentName;
+    }
+
+    public void setStudentName(String studentName) {
+        this.studentName = studentName;
+    }
+
+    public String getCounselorName() {
+        return counselorName;
+    }
+
+    public void setCounselorName(String counselorName) {
+        this.counselorName = counselorName;
     }
 
     public String getType() {
@@ -65,4 +83,3 @@ public class NotificationResp {
         this.createTime = createTime;
     }
 }
-

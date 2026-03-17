@@ -11,12 +11,14 @@ import com.example.mentalhealth.dto.resp.ConsultAppointmentResp;
 import com.example.mentalhealth.dto.resp.ConsultMessageResp;
 import com.example.mentalhealth.dto.resp.ConsultThreadResp;
 import com.example.mentalhealth.dto.resp.CounselorResp;
+import com.example.mentalhealth.dto.resp.CounselorPageItemResp;
 import com.example.mentalhealth.dto.resp.ScheduleSlotResp;
 import com.example.mentalhealth.entity.ConsultAppointment;
 import com.example.mentalhealth.entity.ConsultMessage;
 import com.example.mentalhealth.entity.ConsultThread;
 import com.example.mentalhealth.entity.CounselorProfile;
 import com.example.mentalhealth.entity.ScheduleSlot;
+import com.example.mentalhealth.entity.User;
 import com.example.mentalhealth.enums.AppointmentStatus;
 import com.example.mentalhealth.enums.ConsultThreadStatus;
 import com.example.mentalhealth.enums.NotificationType;
@@ -27,6 +29,7 @@ import com.example.mentalhealth.mapper.ConsultThreadMapper;
 import com.example.mentalhealth.mapper.CounselorProfileMapper;
 import com.example.mentalhealth.mapper.NotificationMapper;
 import com.example.mentalhealth.mapper.ScheduleSlotMapper;
+import com.example.mentalhealth.mapper.UserMapper;
 import com.example.mentalhealth.service.ConsultService;
 import com.example.mentalhealth.service.AuditLogService;
 import com.example.mentalhealth.security.UserPrincipal;
@@ -68,6 +71,7 @@ public class ConsultServiceImpl implements ConsultService {
     private final ConsultMessageMapper consultMessageMapper;
     private final ScheduleSlotMapper scheduleSlotMapper;
     private final NotificationMapper notificationMapper;
+    private final UserMapper userMapper;
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedissonClient redissonClient;
     private final AuditLogService auditLogService;
@@ -78,6 +82,7 @@ public class ConsultServiceImpl implements ConsultService {
                               ConsultMessageMapper consultMessageMapper,
                               ScheduleSlotMapper scheduleSlotMapper,
                               NotificationMapper notificationMapper,
+                              UserMapper userMapper,
                               RedisTemplate<String, Object> redisTemplate,
                               RedissonClient redissonClient,
                               AuditLogService auditLogService) {
@@ -87,6 +92,7 @@ public class ConsultServiceImpl implements ConsultService {
         this.consultMessageMapper = consultMessageMapper;
         this.scheduleSlotMapper = scheduleSlotMapper;
         this.notificationMapper = notificationMapper;
+        this.userMapper = userMapper;
         this.redisTemplate = redisTemplate;
         this.redissonClient = redissonClient;
         this.auditLogService = auditLogService;
@@ -134,6 +140,44 @@ public class ConsultServiceImpl implements ConsultService {
             e.printStackTrace();
             throw new BizException(ErrorCode.INTERNAL_ERROR, "查询咨询师列表失败: " + e.getMessage());
         }
+    }
+
+    @Override
+    public PageResp<CounselorPageItemResp> pageConsultants(String keyword, int pageNum, int pageSize, Long startDate, Long endDate) {
+        int pn = Math.max(pageNum, 1);
+        int ps = Math.min(Math.max(pageSize, 1), MAX_PAGE_SIZE);
+
+        long startEpoch = startDate == null ? Instant.now().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : startDate;
+        long endEpoch = endDate == null ? Instant.now().plusSeconds(30L * 24 * 3600).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : endDate;
+        LocalDate start = LocalDate.ofInstant(Instant.ofEpochMilli(startEpoch), ZoneId.systemDefault());
+        LocalDate end = LocalDate.ofInstant(Instant.ofEpochMilli(endEpoch), ZoneId.systemDefault());
+        LocalDate today = LocalDate.now();
+        LocalTime nowTime = LocalTime.now();
+
+        PageHelper.startPage(pn, ps);
+        List<CounselorProfile> list = counselorProfileMapper.selectList(keyword == null ? null : keyword.trim());
+        PageInfo<CounselorProfile> pageInfo = new PageInfo<>(list);
+
+        List<Long> counselorUserIds = list.stream().map(CounselorProfile::getUserId).filter(Objects::nonNull).toList();
+        Set<Long> hasAvail = new HashSet<>();
+        if (!counselorUserIds.isEmpty()) {
+            List<Long> ids = scheduleSlotMapper.selectCounselorIdsWithAvailableSlots(counselorUserIds, start, end, today, nowTime);
+            if (ids != null) hasAvail.addAll(ids);
+        }
+
+        List<CounselorPageItemResp> respList = list.stream().map(p -> {
+            CounselorPageItemResp r = new CounselorPageItemResp();
+            r.setId(p.getId());
+            r.setUserId(p.getUserId());
+            r.setRealName(p.getRealName());
+            r.setTitle(p.getTitle());
+            r.setExpertise(p.getExpertise());
+            r.setIntro(p.getIntro());
+            r.setHasAvailableSlots(hasAvail.contains(p.getUserId()));
+            return r;
+        }).toList();
+
+        return new PageResp<>(pageInfo.getTotal(), pn, ps, respList);
     }
 
     @Override
@@ -593,21 +637,48 @@ public class ConsultServiceImpl implements ConsultService {
     private void writeAppointmentNotification(Long studentUserId, Long counselorUserId, Long appointmentId, boolean created) {
         String type = created ? NotificationType.APPOINTMENT_CREATED.name() : NotificationType.APPOINTMENT_CANCELED.name();
         String title = created ? "预约成功" : "预约已取消";
-        String counselorName = null;
+        String counselorDisplay = null;
         try {
             CounselorProfile profile = counselorProfileMapper.selectByUserId(counselorUserId);
             if (profile != null && profile.getRealName() != null && !profile.getRealName().isBlank()) {
-                counselorName = profile.getRealName().trim();
+                counselorDisplay = profile.getRealName().trim();
             }
         } catch (Exception ignored) {
         }
-        String counselorLabel = counselorName == null ? ("咨询师(ID=" + counselorUserId + ")") : ("咨询师「" + counselorName + "」");
+        if (counselorDisplay == null) {
+            try {
+                User counselorUser = userMapper.selectById(counselorUserId);
+                if (counselorUser != null) {
+                    String nick = counselorUser.getNickname();
+                    String uname = counselorUser.getUsername();
+                    if (nick != null && !nick.isBlank()) counselorDisplay = nick.trim();
+                    else if (uname != null && !uname.isBlank()) counselorDisplay = uname.trim();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        String counselorName = counselorDisplay == null ? ("ID=" + counselorUserId) : counselorDisplay;
+
+        String studentDisplay = null;
+        try {
+            User studentUser = userMapper.selectById(studentUserId);
+            if (studentUser != null) {
+                String nick = studentUser.getNickname();
+                String uname = studentUser.getUsername();
+                if (nick != null && !nick.isBlank()) studentDisplay = nick.trim();
+                else if (uname != null && !uname.isBlank()) studentDisplay = uname.trim();
+            }
+        } catch (Exception ignored) {
+        }
+        String studentName = studentDisplay == null ? ("ID=" + studentUserId) : studentDisplay;
         String content = created
-                ? ("你已预约" + counselorLabel + "（预约ID=" + appointmentId + "）")
-                : ("你已取消与" + counselorLabel + "的预约（预约ID=" + appointmentId + "）");
+                ? ("用户" + studentName + "预约咨询师" + counselorName + "（预约ID=" + appointmentId + "）")
+                : ("用户" + studentName + "取消预约咨询师" + counselorName + "（预约ID=" + appointmentId + "）");
 
         com.example.mentalhealth.entity.Notification n1 = new com.example.mentalhealth.entity.Notification();
         n1.setReceiverUserId(studentUserId);
+        n1.setStudentName(studentName);
+        n1.setCounselorName(counselorName);
         n1.setType(NotificationType.valueOf(type));
         n1.setTitle(title);
         n1.setContent(content);
@@ -616,11 +687,32 @@ public class ConsultServiceImpl implements ConsultService {
 
         com.example.mentalhealth.entity.Notification n2 = new com.example.mentalhealth.entity.Notification();
         n2.setReceiverUserId(counselorUserId);
+        n2.setStudentName(studentName);
+        n2.setCounselorName(counselorName);
         n2.setType(NotificationType.valueOf(type));
         n2.setTitle(title);
-        n2.setContent((created ? "有新的预约（" : "预约已取消（") + "ID=" + appointmentId + "）");
+        n2.setContent(content);
         n2.setReadFlag(false);
         notificationMapper.insert(n2);
+
+        try {
+            List<User> admins = userMapper.selectList("ADMIN", null);
+            if (admins != null && !admins.isEmpty()) {
+                for (User admin : admins) {
+                    if (admin == null || admin.getId() == null) continue;
+                    com.example.mentalhealth.entity.Notification n3 = new com.example.mentalhealth.entity.Notification();
+                    n3.setReceiverUserId(admin.getId());
+                    n3.setStudentName(studentName);
+                    n3.setCounselorName(counselorName);
+                    n3.setType(NotificationType.valueOf(type));
+                    n3.setTitle(title);
+                    n3.setContent(content);
+                    n3.setReadFlag(false);
+                    notificationMapper.insert(n3);
+                }
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private void writeConsultantRepliedNotification(Long studentUserId, Long threadId) {

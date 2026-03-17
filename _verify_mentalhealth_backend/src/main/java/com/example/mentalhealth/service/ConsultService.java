@@ -8,6 +8,7 @@ import com.example.mentalhealth.dto.resp.ConsultAppointmentResp;
 import com.example.mentalhealth.dto.resp.ConsultMessageResp;
 import com.example.mentalhealth.dto.resp.ConsultThreadResp;
 import com.example.mentalhealth.dto.resp.CounselorResp;
+import com.example.mentalhealth.dto.resp.CounselorPageItemResp;
 import com.example.mentalhealth.dto.req.ScheduleSlotCreateReq;
 import com.example.mentalhealth.dto.resp.ScheduleSlotResp;
 import java.util.List;
@@ -15,6 +16,8 @@ import java.util.List;
 public interface ConsultService {
 
     List<CounselorResp> listConsultants(String keyword);
+
+    PageResp<CounselorPageItemResp> pageConsultants(String keyword, int pageNum, int pageSize, Long startDate, Long endDate);
 
     CounselorResp getConsultant(Long consultantId);
 

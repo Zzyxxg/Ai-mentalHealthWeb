@@ -2,6 +2,7 @@ package com.example.mentalhealth.mapper;
 
 import com.example.mentalhealth.entity.ScheduleSlot;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -24,6 +25,12 @@ public interface ScheduleSlotMapper {
                                                          @Param("date") LocalDate date,
                                                          @Param("startTime") java.time.LocalTime startTime,
                                                          @Param("endTime") java.time.LocalTime endTime);
+
+    List<Long> selectCounselorIdsWithAvailableSlots(@Param("counselorUserIds") List<Long> counselorUserIds,
+                                                    @Param("startDate") LocalDate startDate,
+                                                    @Param("endDate") LocalDate endDate,
+                                                    @Param("today") LocalDate today,
+                                                    @Param("nowTime") LocalTime nowTime);
 
     int batchInsert(@Param("slots") List<ScheduleSlot> slots);
 

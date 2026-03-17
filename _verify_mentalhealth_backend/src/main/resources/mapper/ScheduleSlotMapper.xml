@@ -59,6 +59,22 @@
         ORDER BY start_time ASC
     </select>
 
+    <select id="selectCounselorIdsWithAvailableSlots" resultType="long">
+        SELECT DISTINCT counselor_user_id
+        FROM schedule_slot
+        WHERE deleted = 0
+          AND status = 'AVAILABLE'
+          AND date BETWEEN #{startDate} AND #{endDate}
+          AND counselor_user_id IN
+          <foreach collection="counselorUserIds" item="id" open="(" close=")" separator=",">
+              #{id}
+          </foreach>
+          AND (
+            date &gt; #{today}
+            OR (date = #{today} AND start_time &gt; #{nowTime})
+          )
+    </select>
+
     <insert id="batchInsert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO schedule_slot (counselor_user_id, date, start_time, end_time, status, deleted)
         VALUES

@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { listConsultants, createAppointment, createConsultThread, listScheduleSlots, type Counselor, type ScheduleSlot } from '../../../services/consult'
+import { pageConsultants, createAppointment, createConsultThread, listScheduleSlots, type CounselorPageItem, type ScheduleSlot } from '../../../services/consult'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import dayjs from 'dayjs'
 
 const router = useRouter()
 const loading = ref(false)
-const consultants = ref<Counselor[]>([])
+const consultants = ref<CounselorPageItem[]>([])
 const keyword = ref('')
+const pageNum = ref(1)
+const pageSize = ref(8)
+const total = ref(0)
 
 // 预约相关
 const bookingDialogVisible = ref(false)
@@ -20,13 +23,11 @@ const bookingForm = reactive({
   durationMinutes: 0,
   note: ''
 })
-const selectedConsultant = ref<Counselor | null>(null)
+const selectedConsultant = ref<CounselorPageItem | null>(null)
 const submitting = ref(false)
 const slotsLoading = ref(false)
 const availableSlots = ref<ScheduleSlot[]>([])
 const maxDuration = ref(240)
-const counselorBookableMap = ref<Record<number, boolean | null>>({})
-const counselorBookableLoadingMap = ref<Record<number, boolean>>({})
 
 const canSubmitBooking = computed(() => {
   return availableSlots.value.length > 0 && bookingForm.slotId > 0 && Boolean(bookingForm.startTime)
@@ -64,10 +65,10 @@ const consultRules = reactive<FormRules>({
 async function fetchConsultants() {
   loading.value = true
   try {
-    const res = await listConsultants(keyword.value)
+    const res = await pageConsultants(pageNum.value, pageSize.value, keyword.value)
     if (res.code === 0) {
-      consultants.value = res.data
-      void warmupCounselorBookable(res.data || [])
+      consultants.value = res.data.list || []
+      total.value = res.data.total || 0
     } else {
       ElMessage.error(res.msg || '获取咨询师列表失败')
     }
@@ -78,45 +79,8 @@ async function fetchConsultants() {
   }
 }
 
-function isCounselorOffline(c: Counselor) {
-  return counselorBookableMap.value[c.userId] === false
-}
-
-async function checkCounselorBookable(counselorUserId: number) {
-  if (counselorBookableLoadingMap.value[counselorUserId]) return
-  counselorBookableLoadingMap.value[counselorUserId] = true
-  try {
-    const startDate = dayjs().startOf('day').valueOf()
-    const endDate = dayjs().add(30, 'day').endOf('day').valueOf()
-    const res = await listScheduleSlots({ counselorUserId, startDate, endDate })
-    if (res.code !== 0) {
-      counselorBookableMap.value[counselorUserId] = null
-      return
-    }
-
-    const now = dayjs()
-    const hasSlots = (res.data || [])
-      .filter(s => s.status === 'AVAILABLE')
-      .some(s => dayjs(`${s.date} ${normalizeTimeStr(s.startTime)}`).isAfter(now))
-
-    counselorBookableMap.value[counselorUserId] = hasSlots
-  } catch {
-    counselorBookableMap.value[counselorUserId] = null
-  } finally {
-    counselorBookableLoadingMap.value[counselorUserId] = false
-  }
-}
-
-async function warmupCounselorBookable(list: Counselor[]) {
-  for (const c of list) {
-    if (counselorBookableMap.value[c.userId] === undefined) {
-      counselorBookableMap.value[c.userId] = null
-    }
-  }
-  for (const c of list) {
-    if (counselorBookableMap.value[c.userId] !== null) continue
-    await checkCounselorBookable(c.userId)
-  }
+function isCounselorOffline(c: CounselorPageItem) {
+  return !c.hasAvailableSlots
 }
 
 function normalizeTimeStr(t: string) {
@@ -146,7 +110,7 @@ function applySlot(slot: ScheduleSlot) {
   bookingForm.durationMinutes = Math.min(60, maxDuration.value)
 }
 
-async function openBookingDialog(c: Counselor) {
+async function openBookingDialog(c: CounselorPageItem) {
   if (isCounselorOffline(c)) return
   selectedConsultant.value = c
   bookingForm.counselorUserId = c.userId
@@ -170,18 +134,14 @@ async function openBookingDialog(c: Counselor) {
         .sort((a, b) => buildSlotLabel(a).localeCompare(buildSlotLabel(b)))
 
       availableSlots.value = slots
-
-      counselorBookableMap.value[c.userId] = slots.length > 0
       if (slots.length > 0) {
         bookingForm.slotId = slots[0].id
         applySlot(slots[0])
       }
     } else {
-      counselorBookableMap.value[c.userId] = null
       ElMessage.error(res.msg || '加载可预约时段失败')
     }
   } catch (e: any) {
-    counselorBookableMap.value[c.userId] = null
     ElMessage.error(e?.message || '网络错误')
   } finally {
     slotsLoading.value = false
@@ -228,7 +188,7 @@ async function handleBooking() {
   })
 }
 
-function openConsultDialog(c: Counselor) {
+function openConsultDialog(c: CounselorPageItem) {
   selectedConsultant.value = c
   consultForm.counselorUserId = c.userId
   consultForm.topic = ''
@@ -260,9 +220,7 @@ async function handleConsult() {
   })
 }
 
-onMounted(() => {
-  fetchConsultants()
-})
+onMounted(() => fetchConsultants())
 </script>
 
 <template>
@@ -313,7 +271,6 @@ onMounted(() => {
             type="primary"
             plain
             size="small"
-            :loading="counselorBookableLoadingMap[c.userId]"
             :disabled="isCounselorOffline(c)"
             @click="openBookingDialog(c)"
           >
@@ -321,6 +278,18 @@ onMounted(() => {
           </el-button>
         </div>
       </el-card>
+    </div>
+
+    <div v-if="total > 0" class="pagination">
+      <el-pagination
+        v-model:current-page="pageNum"
+        v-model:page-size="pageSize"
+        :total="total"
+        layout="total, prev, pager, next, sizes"
+        :page-sizes="[8, 12, 20]"
+        @current-change="fetchConsultants"
+        @size-change="fetchConsultants"
+      />
     </div>
 
     <!-- 咨询弹窗 -->
@@ -502,6 +471,12 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   margin-top: auto;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .duration-hint {
