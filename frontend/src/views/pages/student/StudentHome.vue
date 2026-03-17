@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { listConsultants, createAppointment, createConsultThread, type Counselor } from '../../../services/consult'
+import { listConsultants, createAppointment, createConsultThread, listScheduleSlots, type Counselor, type ScheduleSlot } from '../../../services/consult'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import dayjs from 'dayjs'
 
@@ -15,19 +15,26 @@ const bookingDialogVisible = ref(false)
 const bookingFormRef = ref<FormInstance>()
 const bookingForm = reactive({
   counselorUserId: 0,
+  slotId: 0,
   startTime: '',
-  durationMinutes: 45,
+  durationMinutes: 0,
   note: ''
 })
 const selectedConsultant = ref<Counselor | null>(null)
 const submitting = ref(false)
+const slotsLoading = ref(false)
+const availableSlots = ref<ScheduleSlot[]>([])
+const maxDuration = ref(240)
+
+const canSubmitBooking = computed(() => {
+  return availableSlots.value.length > 0 && bookingForm.slotId > 0 && Boolean(bookingForm.startTime)
+})
 
 const bookingRules = reactive<FormRules>({
-  startTime: [
-    { required: true, message: '请选择预约开始时间', trigger: 'change' }
-  ],
+  slotId: [{ required: true, message: '请选择可预约时段', trigger: 'change' }],
   durationMinutes: [
-    { required: true, message: '请选择咨询时长', trigger: 'change' }
+    { required: true, message: '请输入预约时长', trigger: 'blur' },
+    { type: 'number', min: 15, message: '时长至少 15 分钟', trigger: 'blur' }
   ]
 })
 
@@ -68,13 +75,75 @@ async function fetchConsultants() {
   }
 }
 
-function openBookingDialog(c: Counselor) {
+function normalizeTimeStr(t: string) {
+  const s = (t || '').trim()
+  if (!s) return s
+  if (s.length === 5) return `${s}:00`
+  return s
+}
+
+function buildSlotLabel(slot: ScheduleSlot) {
+  const start = normalizeTimeStr(slot.startTime)
+  const end = normalizeTimeStr(slot.endTime)
+  return `${slot.date} ${start.slice(0, 5)}-${end.slice(0, 5)}`
+}
+
+function applySlot(slot: ScheduleSlot) {
+  const start = `${slot.date} ${normalizeTimeStr(slot.startTime)}`
+  const end = `${slot.date} ${normalizeTimeStr(slot.endTime)}`
+  const startAt = dayjs(start)
+  const endAt = dayjs(end)
+  bookingForm.startTime = startAt.format('YYYY-MM-DD HH:mm:ss')
+  
+  const slotDuration = Math.max(0, endAt.diff(startAt, 'minute'))
+  // 设置时长上限，最大不超过240分钟（4小时），且不超过该时段的全长
+  maxDuration.value = Math.min(240, slotDuration)
+  // 默认时长为60分钟，或该时段的最大可用时长（如果最大时长小于60分钟）
+  bookingForm.durationMinutes = Math.min(60, maxDuration.value)
+}
+
+async function openBookingDialog(c: Counselor) {
   selectedConsultant.value = c
   bookingForm.counselorUserId = c.userId
-  bookingForm.startTime = dayjs().add(1, 'day').hour(10).minute(0).second(0).format('YYYY-MM-DD HH:mm:ss')
-  bookingForm.durationMinutes = 45
+  bookingForm.slotId = 0
+  bookingForm.startTime = ''
+  bookingForm.durationMinutes = 0
   bookingForm.note = ''
   bookingDialogVisible.value = true
+
+  slotsLoading.value = true
+  availableSlots.value = []
+  try {
+    const startDate = dayjs().startOf('day').valueOf()
+    const endDate = dayjs().add(30, 'day').endOf('day').valueOf()
+    const res = await listScheduleSlots({ counselorUserId: c.userId, startDate, endDate })
+    if (res.code === 0) {
+      const now = dayjs()
+      const slots = (res.data || [])
+        .filter(s => s.status === 'AVAILABLE')
+        .filter(s => dayjs(`${s.date} ${normalizeTimeStr(s.startTime)}`).isAfter(now))
+        .sort((a, b) => buildSlotLabel(a).localeCompare(buildSlotLabel(b)))
+
+      availableSlots.value = slots
+
+      if (slots.length > 0) {
+        bookingForm.slotId = slots[0].id
+        applySlot(slots[0])
+      }
+    } else {
+      ElMessage.error(res.msg || '加载可预约时段失败')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '网络错误')
+  } finally {
+    slotsLoading.value = false
+  }
+}
+
+function onSlotChange(slotId: number) {
+  const slot = availableSlots.value.find(s => s.id === slotId)
+  if (!slot) return
+  applySlot(slot)
 }
 
 async function handleBooking() {
@@ -83,14 +152,22 @@ async function handleBooking() {
   await bookingFormRef.value.validate(async (valid) => {
     if (!valid) return
 
+    if (!canSubmitBooking.value) {
+      ElMessage.warning('该咨询师暂未开放预约（未配置排班或无可用时段）')
+      return
+    }
+
     submitting.value = true
     try {
       const res = await createAppointment({
-        ...bookingForm,
+        counselorUserId: bookingForm.counselorUserId,
+        durationMinutes: bookingForm.durationMinutes,
+        note: bookingForm.note,
         startTime: dayjs(bookingForm.startTime).valueOf()
       })
       if (res.code === 0) {
         ElMessage.success('预约成功！')
+        window.dispatchEvent(new Event('mh:notifications-updated'))
         bookingDialogVisible.value = false
       } else {
         ElMessage.error(res.msg || '预约失败')
@@ -224,22 +301,43 @@ onMounted(() => {
       destroy-on-close
     >
       <el-form ref="bookingFormRef" :model="bookingForm" :rules="bookingRules" label-position="top">
-        <el-form-item label="咨询开始时间" prop="startTime">
-          <el-date-picker
-            v-model="bookingForm.startTime"
-            type="datetime"
-            placeholder="选择日期时间"
-            format="YYYY-MM-DD HH:mm"
-            value-format="YYYY-MM-DD HH:mm:ss"
+        <el-form-item label="可预约时段" prop="slotId">
+          <el-select
+            v-model="bookingForm.slotId"
             style="width: 100%"
+            placeholder="请选择可预约时段"
+            :loading="slotsLoading"
+            :disabled="slotsLoading || availableSlots.length === 0"
+            @change="onSlotChange"
+          >
+            <el-option
+              v-for="s in availableSlots"
+              :key="s.id"
+              :label="buildSlotLabel(s)"
+              :value="s.id"
+            />
+          </el-select>
+          <el-alert
+            v-if="!slotsLoading && availableSlots.length === 0"
+            title="该咨询师暂未开放预约（未配置排班或无可用时段）"
+            type="warning"
+            show-icon
+            :closable="false"
+            style="margin-top: 10px"
           />
         </el-form-item>
-        <el-form-item label="咨询时长(分钟)" prop="durationMinutes">
-          <el-select v-model="bookingForm.durationMinutes" style="width: 100%">
-            <el-option label="30分钟" :value="30" />
-            <el-option label="45分钟" :value="45" />
-            <el-option label="60分钟" :value="60" />
-          </el-select>
+        <el-form-item label="开始时间">
+          <el-input v-model="bookingForm.startTime" disabled />
+        </el-form-item>
+        <el-form-item label="时长(分钟)" prop="durationMinutes">
+          <el-input-number
+            v-model="bookingForm.durationMinutes"
+            :min="15"
+            :max="maxDuration"
+            :step="15"
+            style="width: 100%"
+          />
+          <div class="duration-hint">可选范围: 15 - {{ maxDuration }} 分钟</div>
         </el-form-item>
         <el-form-item label="备注说明" prop="note">
           <el-input
@@ -253,7 +351,7 @@ onMounted(() => {
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="bookingDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitting" @click="handleBooking">确认预约</el-button>
+          <el-button type="primary" :loading="submitting" :disabled="!canSubmitBooking" @click="handleBooking">确认预约</el-button>
         </div>
       </template>
     </el-dialog>
@@ -346,5 +444,11 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   margin-top: auto;
+}
+
+.duration-hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-top: 4px;
 }
 </style>

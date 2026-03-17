@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { Bell } from '@element-plus/icons-vue'
-import { listNotifications } from '../services/notification'
+import { listNotifications, readAllNotifications } from '../services/notification'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
-const route = useRoute()
+const authStore = useAuthStore()
 const unreadCount = ref(0)
 let timer: any = null
+let listener: any = null
 
 async function fetchUnreadCount() {
   try {
@@ -20,19 +22,36 @@ async function fetchUnreadCount() {
   }
 }
 
-function goToNotifications() {
-  const role = route.path.split('/')[1]
-  router.push(`/${role}/notifications`)
+async function goToNotifications() {
+  if (unreadCount.value > 0) {
+    try {
+      const res = await readAllNotifications()
+      if (res.code === 0) {
+        unreadCount.value = 0
+        window.dispatchEvent(new Event('mh:notifications-updated'))
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (authStore.role === 'ADMIN') router.push('/admin/notifications')
+  else if (authStore.role === 'CONSULTANT') router.push('/counselor/notifications')
+  else router.push('/student/notifications')
 }
 
 onMounted(() => {
   fetchUnreadCount()
   // 轮询未读通知，每 30 秒一次
   timer = setInterval(fetchUnreadCount, 30000)
+
+  listener = () => fetchUnreadCount()
+  window.addEventListener('mh:notifications-updated', listener)
 })
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
+  if (listener) window.removeEventListener('mh:notifications-updated', listener)
 })
 </script>
 

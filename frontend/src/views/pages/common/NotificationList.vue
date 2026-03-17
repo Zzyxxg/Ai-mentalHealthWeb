@@ -1,15 +1,24 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { listNotifications, readAllNotifications, readNotification, type NotificationItem } from '../../../services/notification'
 import { formatNotificationType, formatDateTime } from '../../../utils/format'
+import { useAuthStore } from '../../../stores/auth'
 
 const loading = ref(false)
+const router = useRouter()
+const authStore = useAuthStore()
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const list = ref<NotificationItem[]>([])
 const filter = ref<'ALL' | 'UNREAD' | 'READ'>('ALL')
+
+watch(filter, () => {
+  pageNum.value = 1
+  refresh()
+})
 const options = [
   { label: '全部', value: 'ALL' },
   { label: '未读', value: 'UNREAD' },
@@ -42,8 +51,29 @@ async function onRead(item: NotificationItem) {
   const res = await readNotification(item.id)
   if (res.code === 0) {
     item.readFlag = true
+    window.dispatchEvent(new Event('mh:notifications-updated'))
   } else {
     ElMessage.error(res.msg || '标记已读失败')
+  }
+}
+
+function extractThreadId(text: string) {
+  const m = /threadId\s*=\s*(\d+)/i.exec(text || '')
+  if (!m) return null
+  const id = Number(m[1])
+  return Number.isFinite(id) ? id : null
+}
+
+async function handleRowClick(item: NotificationItem) {
+  await onRead(item)
+
+  const threadId = extractThreadId(`${item.title} ${item.content}`)
+  if (!threadId) return
+
+  if (authStore.role === 'CONSULTANT') {
+    router.push({ name: 'counselor-consultation-detail', params: { id: threadId } })
+  } else if (authStore.role === 'STUDENT') {
+    router.push({ name: 'student-consultation-detail', params: { id: threadId } })
   }
 }
 
@@ -52,6 +82,7 @@ async function onReadAll() {
   if (res.code === 0) {
     ElMessage.success('已全部标记已读')
     await refresh()
+    window.dispatchEvent(new Event('mh:notifications-updated'))
   } else {
     ElMessage.error(res.msg || '操作失败')
   }
@@ -69,7 +100,7 @@ onMounted(() => refresh())
     </div>
 
     <el-card>
-      <el-table :data="list" v-loading="loading" style="width: 100%" @row-click="onRead">
+      <el-table :data="list" v-loading="loading" style="width: 100%" @row-click="handleRowClick">
         <el-table-column prop="title" label="标题" min-width="160" />
         <el-table-column prop="content" label="内容" min-width="260" />
         <el-table-column label="类型" width="180">
@@ -125,4 +156,3 @@ onMounted(() => refresh())
   margin-top: 12px;
 }
 </style>
-

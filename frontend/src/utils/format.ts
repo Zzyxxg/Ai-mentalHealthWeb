@@ -43,7 +43,8 @@ export const NOTIFICATION_STATUS_MAP: Record<number, string> = {
 export const NOTIFICATION_TYPE_MAP: Record<string, string> = {
   'APPOINTMENT_CREATED': '预约成功',
   'APPOINTMENT_CANCELED': '预约取消',
-  'CONSULTANT_REPLIED': '咨询回复'
+  'CONSULTANT_REPLIED': '咨询回复',
+  'STUDENT_MESSAGE': '咨询新消息'
 }
 
 export const ASSESSMENT_LEVEL_MAP: Record<string, string> = {

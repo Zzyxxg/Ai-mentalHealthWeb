@@ -185,7 +185,7 @@ public class ConsultServiceImpl implements ConsultService {
             }
         }
 
-        String lockKey = "mh:lock:consult:slot:" + req.getCounselorUserId() + ":" + slotDate + ":" + slotStartTime + ":" + slotEndTime;
+        String lockKey = "mh:lock:consult:slot:" + req.getCounselorUserId() + ":" + slotDate;
         RLock lock = redissonClient.getLock(lockKey);
         boolean locked;
         try {
@@ -199,16 +199,45 @@ public class ConsultServiceImpl implements ConsultService {
         }
 
         try {
-            ScheduleSlot slot = scheduleSlotMapper.selectByCounselorAndExactTime(req.getCounselorUserId(), slotDate, slotStartTime, slotEndTime);
-            if (slot == null) {
-                throw new BizException(ErrorCode.NOT_FOUND, "该时段未配置或不存在");
+            List<ScheduleSlot> slots = scheduleSlotMapper.selectAvailableByCounselorAndTime(req.getCounselorUserId(), slotDate, slotStartTime, slotEndTime);
+            if (slots == null || slots.isEmpty()) {
+                throw new BizException(ErrorCode.NOT_FOUND, "该时段未配置、已预约或不存在");
             }
-            if (slot.getStatus() != ScheduleSlotStatus.AVAILABLE) {
-                throw new BizException(ErrorCode.CONFLICT, "该时段不可预约");
+            
+            // 挑选最合适的时段（目前逻辑是只要包含就行，取第一个）
+            ScheduleSlot slot = slots.get(0);
+            
+            // 准备时段拆分
+            List<ScheduleSlot> toInsert = new ArrayList<>();
+            
+            // 1. 如果预约开始时间晚于时段开始时间，拆分出前半段
+            if (slot.getStartTime().isBefore(slotStartTime)) {
+                ScheduleSlot pre = new ScheduleSlot();
+                pre.setCounselorUserId(slot.getCounselorUserId());
+                pre.setDate(slot.getDate());
+                pre.setStartTime(slot.getStartTime());
+                pre.setEndTime(slotStartTime);
+                pre.setStatus(ScheduleSlotStatus.AVAILABLE);
+                toInsert.add(pre);
             }
-            int occupied = scheduleSlotMapper.updateStatusIfCurrent(slot.getId(), ScheduleSlotStatus.AVAILABLE.name(), ScheduleSlotStatus.OCCUPIED.name());
-            if (occupied != 1) {
-                throw new BizException(ErrorCode.CONFLICT, "该时段已被占用");
+            
+            // 2. 如果预约结束时间早于时段结束时间，拆分出后半段
+            if (slot.getEndTime().isAfter(slotEndTime)) {
+                ScheduleSlot post = new ScheduleSlot();
+                post.setCounselorUserId(slot.getCounselorUserId());
+                post.setDate(slot.getDate());
+                post.setStartTime(slotEndTime);
+                post.setEndTime(slot.getEndTime());
+                post.setStatus(ScheduleSlotStatus.AVAILABLE);
+                toInsert.add(post);
+            }
+            
+            // 3. 更新当前时段为预约时段并设为 OCCUPIED
+            scheduleSlotMapper.updateTimeAndStatus(slot.getId(), slotStartTime, slotEndTime, ScheduleSlotStatus.OCCUPIED.name());
+            
+            // 4. 插入拆分出来的 AVAILABLE 时段
+            if (!toInsert.isEmpty()) {
+                scheduleSlotMapper.batchInsert(toInsert);
             }
 
             ConsultAppointment appointment = new ConsultAppointment();
@@ -461,6 +490,9 @@ public class ConsultServiceImpl implements ConsultService {
 
         consultMessageMapper.insert(message);
 
+        // 通知咨询师：收到新的咨询消息
+        writeStudentMessageNotification(thread.getCounselorUserId(), thread.getId());
+
         ConsultThreadResp resp = toResp(thread);
         resp.setMessages(Collections.singletonList(toResp(message)));
         resp.setCounselorName(profile.getRealName());
@@ -544,6 +576,11 @@ public class ConsultServiceImpl implements ConsultService {
 
         consultMessageMapper.insert(message);
 
+        // 学生发送消息：通知咨询师
+        if ("STUDENT".equals(role)) {
+            writeStudentMessageNotification(thread.getCounselorUserId(), thread.getId());
+        }
+
         // 如果是咨询师回复，且状态是 UNPROCESSED，则改为 PROCESSING
         if ("CONSULTANT".equals(role) && thread.getStatus() == ConsultThreadStatus.UNPROCESSED) {
             consultThreadMapper.updateStatus(thread.getId(), ConsultThreadStatus.PROCESSING.name());
@@ -581,6 +618,16 @@ public class ConsultServiceImpl implements ConsultService {
         n.setType(NotificationType.CONSULTANT_REPLIED);
         n.setTitle("咨询师已回复");
         n.setContent("你的咨询已收到回复（threadId=" + threadId + "）");
+        n.setReadFlag(false);
+        notificationMapper.insert(n);
+    }
+
+    private void writeStudentMessageNotification(Long counselorUserId, Long threadId) {
+        com.example.mentalhealth.entity.Notification n = new com.example.mentalhealth.entity.Notification();
+        n.setReceiverUserId(counselorUserId);
+        n.setType(NotificationType.STUDENT_MESSAGE);
+        n.setTitle("新的咨询消息");
+        n.setContent("你有新的咨询消息（threadId=" + threadId + "）");
         n.setReadFlag(false);
         notificationMapper.insert(n);
     }

@@ -42,7 +42,7 @@ function goToConsultations() {
 }
 
 function goToSchedules() {
-  router.push({ name: 'counselor-schedules' })
+  router.push({ name: 'counselor-schedule' })
 }
 
 function goToAppointments() {

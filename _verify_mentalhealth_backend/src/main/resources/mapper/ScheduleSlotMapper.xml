@@ -47,6 +47,18 @@
         LIMIT 1
     </select>
 
+    <select id="selectAvailableByCounselorAndTime" resultMap="SlotResultMap">
+        SELECT <include refid="SlotColumns"/>
+        FROM schedule_slot
+        WHERE counselor_user_id = #{counselorUserId}
+          AND date = #{date}
+          AND start_time &lt;= #{startTime}
+          AND end_time &gt;= #{endTime}
+          AND status = 'AVAILABLE'
+          AND deleted = 0
+        ORDER BY start_time ASC
+    </select>
+
     <insert id="batchInsert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO schedule_slot (counselor_user_id, date, start_time, end_time, status, deleted)
         VALUES
@@ -64,6 +76,12 @@
     <update id="updateStatus">
         UPDATE schedule_slot
         SET status = #{status}, update_time = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="updateTimeAndStatus">
+        UPDATE schedule_slot
+        SET start_time = #{startTime}, end_time = #{endTime}, status = #{status}, update_time = CURRENT_TIMESTAMP(3)
         WHERE id = #{id} AND deleted = 0
     </update>
 
