@@ -8,6 +8,7 @@ public class User {
     private String username;
     private String passwordHash;
     private String role;
+    private String status;
     private String nickname;
     private String avatarUrl;
     private Integer deleted;
@@ -44,6 +45,14 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public String getNickname() {

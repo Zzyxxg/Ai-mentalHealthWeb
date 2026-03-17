@@ -14,7 +14,13 @@ public interface ConsultAppointmentMapper {
 
     List<ConsultAppointment> selectByUser(@Param("userId") Long userId, @Param("status") Integer status);
 
+    List<ConsultAppointment> selectByCounselor(@Param("counselorUserId") Long counselorUserId, @Param("status") Integer status);
+
+    List<ConsultAppointment> selectAll(@Param("status") Integer status);
+
     int insert(ConsultAppointment appointment);
 
     int updateStatus(@Param("id") Long id, @Param("userId") Long userId, @Param("status") Integer status);
+
+    int updateStatusAndNote(@Param("id") Long id, @Param("status") Integer status, @Param("note") String note);
 }

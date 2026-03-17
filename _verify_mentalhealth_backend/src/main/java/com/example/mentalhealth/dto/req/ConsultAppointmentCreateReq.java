@@ -10,8 +10,7 @@ public class ConsultAppointmentCreateReq {
     private Long counselorUserId;
 
     @NotNull(message = "开始时间不能为空")
-    @Future(message = "开始时间必须在未来")
-    private LocalDateTime startTime;
+    private Long startTime;
 
     @NotNull(message = "咨询时长不能为空")
     private Integer durationMinutes;
@@ -26,11 +25,11 @@ public class ConsultAppointmentCreateReq {
         this.counselorUserId = counselorUserId;
     }
 
-    public LocalDateTime getStartTime() {
+    public Long getStartTime() {
         return startTime;
     }
 
-    public void setStartTime(LocalDateTime startTime) {
+    public void setStartTime(Long startTime) {
         this.startTime = startTime;
     }
 

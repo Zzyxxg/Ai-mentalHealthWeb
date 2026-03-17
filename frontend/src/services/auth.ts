@@ -9,14 +9,17 @@ export interface LoginReq {
 }
 
 export interface LoginResp {
-  accessToken: string
-  tokenType: string
+  token: string
+  type: string
   expiresIn: number
 }
 
 export interface UserMeResp {
-  userId: number
+  id: number
   username: string
+  role: string
+  nickname?: string
+  avatarUrl?: string
 }
 
 export async function login(req: LoginReq) {

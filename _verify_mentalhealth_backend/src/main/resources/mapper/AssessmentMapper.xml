@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mentalhealth.mapper.AssessmentMapper">
+
+    <resultMap id="AssessmentResultMap" type="com.example.mentalhealth.entity.Assessment">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="scale_type" property="scaleType"/>
+        <result column="total_score" property="totalScore"/>
+        <result column="level" property="level"/>
+        <result column="suggestion" property="suggestion"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="AssessmentColumns">
+        id, user_id, scale_type, total_score, level, suggestion, create_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assessment (user_id, scale_type, total_score, level, suggestion)
+        VALUES (#{userId}, #{scaleType}, #{totalScore}, #{level}, #{suggestion})
+    </insert>
+
+    <select id="selectByUser" resultMap="AssessmentResultMap">
+        SELECT <include refid="AssessmentColumns"/>
+        FROM assessment
+        WHERE user_id = #{userId}
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectByUserAndType" resultMap="AssessmentResultMap">
+        SELECT <include refid="AssessmentColumns"/>
+        FROM assessment
+        WHERE user_id = #{userId} AND scale_type = #{scaleType}
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectAll" resultMap="AssessmentResultMap">
+        SELECT <include refid="AssessmentColumns"/>
+        FROM assessment
+        <where>
+            <if test="scaleType != null">
+                scale_type = #{scaleType}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+</mapper>
+

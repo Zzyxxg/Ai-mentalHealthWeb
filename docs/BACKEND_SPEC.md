@@ -52,6 +52,7 @@
 - UNAVAILABLE：不可用
 
 ### 3.3 预约状态（appointment_status）
+- CREATED：已提交（初始状态）
 - CONFIRMED：已确认
 - CANCELED：已取消
 - COMPLETED：已完成
@@ -95,6 +96,7 @@
 - id
 - studentUserId
 - counselorUserId
+- counselorName（冗余字段，方便前端展示）
 - status（UNPROCESSED/PROCESSING/CLOSED）
 - topic
 - hidden（0/1）
@@ -131,6 +133,51 @@
 - createTime
 - updateTime
 
+## 6. 预约与排班（ScheduleSlot / Appointment）接口口径（MVP）
+
+### 6.1 排班接口
+
+#### POST `/api/v1/schedule-slots`（咨询师）批量创建排班
+- **请求**：数组
+  - date: string（yyyy-MM-dd）
+  - startTime: string（HH:mm 或 HH:mm:ss）
+  - endTime: string（HH:mm 或 HH:mm:ss）
+- **规则**
+  - 同一咨询师同一 `date+startTime+endTime` 唯一（DB 唯一约束 + 冲突返回 409）
+  - `endTime` 必须晚于 `startTime`
+
+#### GET `/api/v1/schedule-slots` 查询排班
+- **查询参数**
+  - counselorUserId?: number（学生查询必须传；咨询师查询自己可不传）
+  - startDate: number（epoch millis）
+  - endDate: number（epoch millis）
+- **返回**：`ScheduleSlotResp[]`
+
+#### PATCH `/api/v1/schedule-slots/{slotId}`（咨询师）更新排班状态
+- **请求**：`{ status: "AVAILABLE" | "UNAVAILABLE" }`
+- **规则**
+  - 仅允许操作未来时段
+  - `OCCUPIED` 不允许手动改状态
+
+#### PATCH `/api/v1/schedule-slots/{slotId}/delete`（咨询师）删除排班（软删）
+- **规则**
+  - 仅允许删除未来时段
+  - `OCCUPIED` 不允许删除
+
+### 6.2 预约接口（与排班强绑定）
+
+#### POST `/api/v1/consult-appointments`（学生）创建预约
+- **请求**：`{ counselorUserId, startTime(epoch millis), durationMinutes, note? }`
+- **规则**
+  - 创建成功即视为 **CONFIRMED**
+  - 根据 `counselorUserId + startTime + durationMinutes` 精确匹配唯一 `ScheduleSlot`（date=startTime日期，startTime=startTime时间，endTime=start+duration）
+  - 仅当 slot.status=AVAILABLE 才可创建；创建成功后 slot.status 置为 **OCCUPIED**
+
+#### PATCH `/api/v1/consult-appointments/{id}` action=CANCEL（学生）取消预约
+- **规则**
+  - 已完成（COMPLETED）不可取消
+  - 取消成功后，若绑定 slot 且 slot 为 OCCUPIED，则释放为 **AVAILABLE**
+
 ### 4.8 Assessment（测评记录）
 - id
 - userId
@@ -140,6 +187,22 @@
 - suggestion
 - createTime
 
+## 8. 测评（Assessment）接口口径（MVP）
+
+### 8.1 GET `/api/v1/assessments/scales`
+- 返回 PHQ9 / GAD7 的列表（含 type/name）
+
+### 8.2 GET `/api/v1/assessments/scales/{type}`
+- 返回量表结构（题目 + 选项分值）
+
+### 8.3 POST `/api/v1/assessments`（学生）
+- **请求**：`{ scaleType: "PHQ9" | "GAD7", answers: number[] }`（answers 分值范围 0~3）
+- **返回**：`AssessmentResp`（含 totalScore/level/suggestion）
+
+### 8.4 GET `/api/v1/assessments/my`（分页）
+- **查询参数**：pageNum/pageSize/scaleType?
+- **返回**：`PageResp<AssessmentResp>`
+
 ### 4.9 Notification（站内通知）
 - id
 - receiverUserId
@@ -148,6 +211,44 @@
 - content
 - readFlag（0/1）
 - createTime
+
+## 7. 通知（Notification）接口口径（MVP）
+
+### 7.1 GET `/api/v1/notifications` 通知列表（分页）
+- **查询参数**
+  - pageNum: number（默认 1）
+  - pageSize: number（默认 10）
+  - readFlag?: number（0 未读 / 1 已读）
+- **返回**：`PageResp<NotificationResp>`
+
+### 7.2 PATCH `/api/v1/notifications/{id}/read` 标记已读
+- **规则**：仅能标记自己的通知
+
+### 7.3 POST `/api/v1/notifications/read-all` 全部标记已读
+
+## 9. 管理端（Admin）接口口径（MVP）
+
+### 9.1 GET `/api/v1/admin/users`
+- 查询：pageNum/pageSize/role?/keyword?
+- 返回：`PageResp<AdminUserResp>`
+
+### 9.2 PATCH `/api/v1/admin/users/{id}/status`
+- 请求：`{ status: "ENABLED" | "DISABLED" }`
+
+### 9.3 POST `/api/v1/admin/users/{id}/reset-password`
+- 请求：`{ newPassword: string }`
+
+### 9.4 GET `/api/v1/admin/appointments`
+- 查询：pageNum/pageSize/status?
+
+### 9.5 GET `/api/v1/admin/consult-threads`
+- 查询：pageNum/pageSize
+
+### 9.6 GET `/api/v1/admin/assessments`
+- 查询：pageNum/pageSize/scaleType?
+
+### 9.7 GET `/api/v1/admin/stats`
+- 查询：days（默认30）
 
 ### 4.10 AuditLog（审计日志）
 - id
